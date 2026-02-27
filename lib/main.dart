@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'screens/map_screen.dart';
 import 'services/tracking_controller.dart';
 
@@ -19,7 +20,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _trackingController.initialize(autoStart: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _trackingController.initialize(autoStart: true);
+    });
   }
 
   @override

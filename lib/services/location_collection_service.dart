@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/location_sample.dart';
@@ -7,12 +10,10 @@ import '../models/location_sample.dart';
 class LocationCollectionService {
   final Duration interval;
   final Duration fixWindow;
-  final double excellentAccuracyThresholdMeters;
 
   LocationCollectionService({
-    this.interval = const Duration(minutes: 1),
+    this.interval = const Duration(minutes: 2),
     this.fixWindow = const Duration(seconds: 20),
-    this.excellentAccuracyThresholdMeters = 6,
   });
 
   final StreamController<LocationSample> _sampleController =
@@ -23,100 +24,238 @@ class LocationCollectionService {
   Stream<LocationSample> get samples => _sampleController.stream;
   Stream<String> get errors => _errorController.stream;
 
-  Timer? _timer;
-  bool _isCollecting = false;
+  StreamSubscription<Position>? _positionSubscription;
+  Timer? _samplingTimer;
+  Timer? _windowTimer;
+
+  final List<Position> _windowPositions = <Position>[];
+  Position? _latestPosition;
+
+  bool _windowOpen = false;
+  bool _isEmittingSample = false;
 
   Future<bool> start() async {
-    if (_timer != null) return true;
+    if (_positionSubscription != null) return true;
 
     final ready = await _ensureLocationReady();
     if (!ready) return false;
 
-    await _collectOnce();
-    _timer = Timer.periodic(interval, (_) {
-      _collectOnce();
-    });
+    try {
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: _streamLocationSettings(),
+      ).listen(
+        (position) {
+          _latestPosition = position;
+          if (_windowOpen) {
+            _windowPositions.add(position);
+          }
+        },
+        onError: (error) {
+          _errorController.add('Flux GPS interrompu: $error');
+        },
+      );
 
-    return true;
+      developer.log(
+        '[LocationCollectionService] stream started interval=$interval window=$fixWindow',
+      );
+
+      _openSamplingWindow();
+      _samplingTimer = Timer.periodic(interval, (_) {
+        _openSamplingWindow();
+      });
+
+      return true;
+    } catch (e) {
+      _errorController.add('Impossible de demarrer le suivi GPS: $e');
+      await stop();
+      return false;
+    }
   }
 
   Future<void> stop() async {
-    _timer?.cancel();
-    _timer = null;
+    _samplingTimer?.cancel();
+    _samplingTimer = null;
+
+    _windowTimer?.cancel();
+    _windowTimer = null;
+
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+
+    _windowPositions.clear();
+    _latestPosition = null;
+    _windowOpen = false;
+    _isEmittingSample = false;
+
+    developer.log('[LocationCollectionService] stream stopped');
   }
 
-  Future<void> _collectOnce() async {
-    if (_isCollecting) return;
-    _isCollecting = true;
+  void _openSamplingWindow() {
+    if (_windowOpen || _isEmittingSample) {
+      return;
+    }
+
+    _windowOpen = true;
+    _windowPositions.clear();
+
+    developer.log(
+      '[LocationCollectionService] sampling window open for ${fixWindow.inSeconds}s',
+    );
+
+    _windowTimer?.cancel();
+    _windowTimer = Timer(fixWindow, () {
+      unawaited(_closeSamplingWindowAndEmit());
+    });
+  }
+
+  Future<void> _closeSamplingWindowAndEmit() async {
+    if (!_windowOpen) return;
+
+    _windowOpen = false;
+    _windowTimer?.cancel();
+    _windowTimer = null;
+
+    if (_isEmittingSample) return;
+    _isEmittingSample = true;
 
     try {
-      final sample = await _collectBestSampleWithinWindow();
-      _sampleController.add(sample);
+      Position? selected = _bestAccuracyPosition(_windowPositions);
+      selected ??= _latestPosition;
+
+      selected ??= await Geolocator.getCurrentPosition(
+        locationSettings: _currentLocationSettings(),
+        timeLimit: const Duration(seconds: 15),
+      );
+
+      final measuredAt = DateTime.now().toUtc();
+      final wasNetworkAvailable = await _isNetworkAvailable();
+
+      _sampleController.add(
+        LocationSample(
+          measuredAtUtc: measuredAt,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          accuracyMeters: selected.accuracy,
+          altitudeMeters: selected.altitude,
+          speedMps: selected.speed,
+          headingDegrees: selected.heading,
+          isMocked: selected.isMocked,
+          wasNetworkAvailable: wasNetworkAvailable,
+        ),
+      );
+
+      developer.log(
+        '[LocationCollectionService] sample emitted '
+        'lat=${selected.latitude}, lon=${selected.longitude}, '
+        'acc=${selected.accuracy}, points=${_windowPositions.length}, '
+        'net=$wasNetworkAvailable',
+      );
     } catch (e) {
       _errorController.add('Echec collecte GPS: $e');
     } finally {
-      _isCollecting = false;
+      _windowPositions.clear();
+      _isEmittingSample = false;
     }
   }
 
-  Future<LocationSample> _collectBestSampleWithinWindow() async {
-    Position? best;
-    final completer = Completer<Position?>();
+  Position? _bestAccuracyPosition(List<Position> positions) {
+    if (positions.isEmpty) return null;
 
-    void completeIfNeeded([Position? position]) {
-      if (!completer.isCompleted) {
-        completer.complete(position);
+    Position best = positions.first;
+    for (final position in positions.skip(1)) {
+      if (position.accuracy < best.accuracy) {
+        best = position;
       }
     }
+    return best;
+  }
 
-    final subscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
+  LocationSettings _streamLocationSettings() {
+    if (kIsWeb) {
+      return const LocationSettings(
+        accuracy: LocationAccuracy.best,
         distanceFilter: 0,
-      ),
-    ).listen(
-      (position) {
-        if (best == null || position.accuracy < best!.accuracy) {
-          best = position;
-        }
+      );
+    }
 
-        if (position.accuracy <= excellentAccuracyThresholdMeters) {
-          completeIfNeeded(position);
-        }
-      },
-      onError: (_) {
-        completeIfNeeded(best);
-      },
-    );
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return AndroidSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+          intervalDuration: const Duration(seconds: 1),
+          forceLocationManager: true,
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: 'Collecte GPS active',
+            notificationText: 'Mesures en cours en arriere-plan',
+            enableWakeLock: true,
+          ),
+        );
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return AppleSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0,
+          pauseLocationUpdatesAutomatically: false,
+        );
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return const LocationSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0,
+        );
+    }
+  }
 
-    final windowTimer = Timer(fixWindow, () {
-      completeIfNeeded(best);
-    });
+  LocationSettings _currentLocationSettings() {
+    if (kIsWeb) {
+      return const LocationSettings(accuracy: LocationAccuracy.best);
+    }
 
-    Position? selected = await completer.future;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return AndroidSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: 'Collecte GPS active',
+            notificationText: 'Mesures en cours en arriere-plan',
+            enableWakeLock: true,
+          ),
+        );
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return AppleSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0,
+          pauseLocationUpdatesAutomatically: false,
+        );
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return const LocationSettings(accuracy: LocationAccuracy.best);
+    }
+  }
 
-    windowTimer.cancel();
-    await subscription.cancel();
+  Future<bool> _isNetworkAvailable() async {
+    try {
+      final dynamic raw = await Connectivity().checkConnectivity();
 
-    selected ??= await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
-      timeLimit: const Duration(seconds: 10),
-    );
+      if (raw is ConnectivityResult) {
+        return raw != ConnectivityResult.none;
+      }
 
-    final measuredAt = DateTime.now().toUtc();
+      if (raw is List) {
+        return raw.any(
+          (item) => item is ConnectivityResult && item != ConnectivityResult.none,
+        );
+      }
 
-    return LocationSample(
-      measuredAtUtc: measuredAt,
-      latitude: selected.latitude,
-      longitude: selected.longitude,
-      accuracyMeters: selected.accuracy,
-      altitudeMeters: selected.altitude,
-      speedMps: selected.speed,
-      headingDegrees: selected.heading,
-      isMocked: selected.isMocked,
-    );
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<bool> _ensureLocationReady() async {
@@ -138,12 +277,24 @@ class LocationCollectionService {
       return false;
     }
 
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        permission == LocationPermission.whileInUse) {
+      final upgradedPermission = await Geolocator.requestPermission();
+      if (upgradedPermission != LocationPermission.denied &&
+          upgradedPermission != LocationPermission.deniedForever) {
+        permission = upgradedPermission;
+      }
+      _errorController.add(
+        'Permission en arriere-plan recommandee: Android > App > Autorisations > Localisation > Toujours autoriser.',
+      );
+    }
+
     return true;
   }
 
   void dispose() {
-    _timer?.cancel();
-    _timer = null;
+    unawaited(stop());
     _sampleController.close();
     _errorController.close();
   }

@@ -4,19 +4,38 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:latlong2/latlong.dart';
 
 class GeoJsonService {
+  static Future<Map<String, dynamic>> _loadJsonMap(String assetPath) async {
+    final byteData = await rootBundle.load(assetPath);
+    final bytes = byteData.buffer.asUint8List(
+      byteData.offsetInBytes,
+      byteData.lengthInBytes,
+    );
+    final jsonText = utf8.decode(bytes);
+    final decoded = json.decode(jsonText);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('GeoJSON invalide: racine non objet');
+    }
+    return decoded;
+  }
+
   /// =========================
   /// LIGNES (chemins)
   /// =========================
   static Future<List<List<LatLng>>> loadPaths(String assetPath) async {
     developer.log('[GeoJsonService] loadPaths start: $assetPath');
-    final data = await rootBundle.loadString(assetPath);
-    final jsonData = json.decode(data);
+    final jsonData = await _loadJsonMap(assetPath);
 
     final List<List<LatLng>> paths = [];
 
-    for (final feature in jsonData['features']) {
+    final features = jsonData['features'];
+    if (features is! List) {
+      throw const FormatException('GeoJSON invalide: "features" absent');
+    }
+
+    for (final feature in features) {
+      if (feature is! Map) continue;
       final geometry = feature['geometry'];
-      if (geometry == null) continue;
+      if (geometry is! Map) continue;
 
       final type = geometry['type'];
       final coords = geometry['coordinates'];
@@ -51,16 +70,21 @@ class GeoJsonService {
   /// =========================
   static Future<List<List<LatLng>>> loadPolygons(String assetPath) async {
     developer.log('[GeoJsonService] loadPolygons start: $assetPath');
-    final data = await rootBundle.loadString(assetPath);
-    final jsonData = json.decode(data);
+    final jsonData = await _loadJsonMap(assetPath);
 
     final List<List<LatLng>> polygons = [];
     int polygonFeatures = 0;
     int multiPolygonFeatures = 0;
 
-    for (final feature in jsonData['features']) {
+    final features = jsonData['features'];
+    if (features is! List) {
+      throw const FormatException('GeoJSON invalide: "features" absent');
+    }
+
+    for (final feature in features) {
+      if (feature is! Map) continue;
       final geometry = feature['geometry'];
-      if (geometry == null) continue;
+      if (geometry is! Map) continue;
 
       final type = geometry['type'];
       final coords = geometry['coordinates'];

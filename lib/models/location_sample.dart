@@ -7,6 +7,7 @@ class LocationSample {
   final double? speedMps;
   final double? headingDegrees;
   final bool isMocked;
+  final bool wasNetworkAvailable;
 
   const LocationSample({
     required this.measuredAtUtc,
@@ -14,6 +15,7 @@ class LocationSample {
     required this.longitude,
     required this.accuracyMeters,
     required this.isMocked,
+    required this.wasNetworkAvailable,
     this.altitudeMeters,
     this.speedMps,
     this.headingDegrees,

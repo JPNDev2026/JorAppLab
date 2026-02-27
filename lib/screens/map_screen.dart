@@ -21,6 +21,10 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const String _loaderVersion = 'bundle-load-v3';
+  static const String _protectedAreaAsset = 'assets/data/aire_protegee.geojson';
+  static const String _pathsAsset = 'assets/data/chemins.geojson';
+
   // État des couches
   bool showPaths = false;
   bool showProtectedAreas = false;
@@ -31,13 +35,14 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<String>? _errorSubscription;
   LocationSample? _selectedSample;
+  bool _isLoadingPaths = false;
+  bool _isLoadingProtectedAreas = false;
 
   @override
   void initState() {
     super.initState();
-    developer.log('[MapScreen] initState');
-    _loadPaths();
-    _loadProtectedAreas();
+    developer.log('[MapScreen] initState loader=$_loaderVersion');
+    _bootstrapLayers();
     widget.trackingController.addListener(_onTrackingChanged);
     _errorSubscription = widget.trackingController.errors.listen((error) {
       if (!mounted) return;
@@ -58,18 +63,54 @@ class _MapScreenState extends State<MapScreen> {
   // Chargement des chemins
   // ─────────────────────────────
   Future<void> _loadPaths() async {
-    const path = 'assets/data/chemins.geojson';
-    developer.log('[MapScreen] _loadPaths start: $path');
+    if (_isLoadingPaths) return;
+    _isLoadingPaths = true;
+    Object? lastError;
+
     try {
-      final result = await GeoJsonService.loadPaths(path);
-      if (!mounted) return;
-      setState(() {
-        paths = result;
-      });
-      developer.log('[MapScreen] _loadPaths done: ${result.length} lignes');
-    } catch (e, st) {
-      developer.log('[MapScreen] _loadPaths error: $e', stackTrace: st);
-      rethrow;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        developer.log('[MapScreen] _loadPaths attempt $attempt start: $_pathsAsset');
+        try {
+          final result = await GeoJsonService.loadPaths(_pathsAsset);
+
+          if (result.isNotEmpty) {
+            if (!mounted) return;
+            setState(() {
+              paths = result;
+            });
+            developer.log(
+              '[MapScreen] _loadPaths success attempt $attempt: ${result.length} lignes',
+            );
+            return;
+          }
+
+          developer.log('[MapScreen] _loadPaths empty result attempt $attempt');
+        } catch (e, st) {
+          lastError = e;
+          developer.log(
+            '[MapScreen] _loadPaths error attempt $attempt: $e',
+            stackTrace: st,
+          );
+        }
+
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
+    } finally {
+      _isLoadingPaths = false;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur chargement chemins: ${lastError ?? "aucune ligne chargée"}')),
+    );
+  }
+
+  Future<void> _retryBothLayersIfNeeded() async {
+    if (paths.isEmpty) {
+      await _loadPaths();
+    }
+    if (protectedAreas.isEmpty) {
+      await _loadProtectedAreas();
     }
   }
 
@@ -77,21 +118,76 @@ class _MapScreenState extends State<MapScreen> {
   // Chargement des zones protégées
   // ─────────────────────────────
   Future<void> _loadProtectedAreas() async {
-    const path = 'assets/data/aire_protegee.geojson';
-    developer.log('[MapScreen] _loadProtectedAreas start: $path');
+    if (_isLoadingProtectedAreas) return;
+    _isLoadingProtectedAreas = true;
+    Object? lastError;
+
     try {
-      final result = await GeoJsonService.loadPolygons(path);
-      if (!mounted) return;
-      setState(() {
-        protectedAreas = result;
-      });
-      developer.log(
-        '[MapScreen] _loadProtectedAreas done: ${result.length} polygones',
-      );
-    } catch (e, st) {
-      developer.log('[MapScreen] _loadProtectedAreas error: $e', stackTrace: st);
-      rethrow;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        developer.log(
+          '[MapScreen] _loadProtectedAreas attempt $attempt start: $_protectedAreaAsset',
+        );
+        try {
+          final result = await GeoJsonService.loadPolygons(_protectedAreaAsset);
+          if (result.isNotEmpty) {
+            if (!mounted) return;
+            setState(() {
+              protectedAreas = result;
+            });
+            developer.log(
+              '[MapScreen] _loadProtectedAreas success attempt $attempt: ${result.length} polygones',
+            );
+            return;
+          }
+          developer.log(
+            '[MapScreen] _loadProtectedAreas empty result attempt $attempt',
+          );
+        } catch (e, st) {
+          lastError = e;
+          developer.log(
+            '[MapScreen] _loadProtectedAreas error attempt $attempt: $e',
+            stackTrace: st,
+          );
+        }
+
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
+    } finally {
+      _isLoadingProtectedAreas = false;
     }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Erreur chargement aire protégée: ${lastError ?? "aucun polygone chargé"}',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _bootstrapLayers() async {
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      developer.log('[MapScreen] _bootstrapLayers attempt $attempt');
+      await _retryBothLayersIfNeeded();
+
+      if (!mounted) return;
+      if (paths.isNotEmpty && protectedAreas.isNotEmpty) {
+        developer.log(
+          '[MapScreen] _bootstrapLayers loaded: paths=${paths.length}, polygons=${protectedAreas.length}',
+        );
+        return;
+      }
+
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Impossible de charger les couches locales.'),
+      ),
+    );
   }
 
   void _onTrackingChanged() {
@@ -141,12 +237,18 @@ class _MapScreenState extends State<MapScreen> {
         showProtectedAreas: showProtectedAreas,
         onTogglePaths: (bool value) {
           developer.log('[MapScreen] toggle paths: $value');
+          if (value && paths.isEmpty) {
+            _loadPaths();
+          }
           setState(() {
             showPaths = value;
           });
         },
         onToggleProtectedAreas: (bool value) {
           developer.log('[MapScreen] toggle protected areas: $value');
+          if (value && protectedAreas.isEmpty) {
+            _loadProtectedAreas();
+          }
           setState(() {
             showProtectedAreas = value;
           });
