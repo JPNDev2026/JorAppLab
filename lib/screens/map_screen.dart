@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/geojson_service.dart';
 import '../models/location_sample.dart';
 import '../services/tracking_controller.dart';
+import '../theme/jorapp_theme.dart';
 import 'measurements_screen.dart';
 import '../widgets/map_widget.dart';
 import '../widgets/layer_menu.dart';
@@ -223,7 +224,7 @@ class _MapScreenState extends State<MapScreen> {
     final lat = sample.latitude.toStringAsFixed(6);
     final lon = sample.longitude.toStringAsFixed(6);
 
-    return 'Dernier point: $lat, $lon | ±$accuracy m | ${sample.quality} | $measuredAt';
+    return 'Dernier point: $lat, $lon | precision $accuracy | ${sample.quality} | $measuredAt';
   }
 
   // ─────────────────────────────
@@ -232,6 +233,10 @@ class _MapScreenState extends State<MapScreen> {
   void _openMenu() {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => LayerMenu(
         showPaths: showPaths,
         showProtectedAreas: showProtectedAreas,
@@ -268,16 +273,53 @@ class _MapScreenState extends State<MapScreen> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Carte – Parc du Jorat'),
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/branding/jorapp_logo.png',
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'JORAPP',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  'Parc du Jorat',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.table_rows),
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              backgroundColor: JorappColors.surfaceStrong,
+              foregroundColor: JorappColors.tealDark,
+            ),
+            icon: const Icon(Icons.table_rows_rounded),
             onPressed: _openMeasurements,
           ),
-          IconButton(
-            icon: const Icon(Icons.layers),
+          const SizedBox(width: 6),
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              backgroundColor: JorappColors.surfaceStrong,
+              foregroundColor: JorappColors.tealDark,
+            ),
+            icon: const Icon(Icons.layers_rounded),
             onPressed: _openMenu,
           ),
+          const SizedBox(width: 12),
         ],
       ),
       body: MapWidget(
@@ -301,14 +343,40 @@ class _MapScreenState extends State<MapScreen> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(12),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
+            gradient: const LinearGradient(
+              colors: [JorappColors.teal, JorappColors.tealDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: JorappColors.lime.withOpacity(0.7)),
           ),
-          child: Text(
-            '${_locationStatusText()}\nMesures collectees: ${widget.trackingController.samples.length}',
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.sensors, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Mesures collectees: ${widget.trackingController.samples.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _locationStatusText(),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
           ),
         ),
       ),

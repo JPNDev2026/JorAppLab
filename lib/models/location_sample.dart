@@ -9,6 +9,7 @@ class LocationSample {
   final bool isMocked;
   final bool wasNetworkAvailable;
   final bool usedNetworkAssisted;
+  final String networkType;
 
   const LocationSample({
     required this.measuredAtUtc,
@@ -18,6 +19,7 @@ class LocationSample {
     required this.isMocked,
     required this.wasNetworkAvailable,
     required this.usedNetworkAssisted,
+    required this.networkType,
     this.altitudeMeters,
     this.speedMps,
     this.headingDegrees,

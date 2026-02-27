@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/map_screen.dart';
 import '../services/tracking_controller.dart';
+import '../theme/jorapp_theme.dart';
 
 class JoratApp extends StatefulWidget {
   const JoratApp({super.key});
@@ -46,8 +47,8 @@ class _JoratAppState extends State<JoratApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Jorat',
-      theme: ThemeData(useMaterial3: true),
+      title: 'JORAPP',
+      theme: buildJorappTheme(),
       home: MapScreen(trackingController: _trackingController),
     );
   }

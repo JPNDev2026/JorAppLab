@@ -3,11 +3,14 @@ import 'dart:developer' as developer;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/location_sample.dart';
 
 class LocationCollectionService {
+  static const MethodChannel _networkChannel = MethodChannel('jorat/network');
+
   final Duration interval;
   final Duration fixWindow;
   bool _useNetworkAssisted;
@@ -149,7 +152,7 @@ class LocationCollectionService {
       );
 
       final measuredAt = DateTime.now().toUtc();
-      final wasNetworkAvailable = await _isNetworkAvailable();
+      final networkSnapshot = await _readNetworkSnapshot();
       final usedNetworkAssisted = _useNetworkAssisted;
 
       _sampleController.add(
@@ -162,8 +165,9 @@ class LocationCollectionService {
           speedMps: selected.speed,
           headingDegrees: selected.heading,
           isMocked: selected.isMocked,
-          wasNetworkAvailable: wasNetworkAvailable,
+          wasNetworkAvailable: networkSnapshot.available,
           usedNetworkAssisted: usedNetworkAssisted,
+          networkType: networkSnapshot.type,
         ),
       );
 
@@ -171,7 +175,8 @@ class LocationCollectionService {
         '[LocationCollectionService] sample emitted '
         'lat=${selected.latitude}, lon=${selected.longitude}, '
         'acc=${selected.accuracy}, points=${_windowPositions.length}, '
-        'net=$wasNetworkAvailable, assisted=$usedNetworkAssisted',
+        'net=${networkSnapshot.available}, netType=${networkSnapshot.type}, '
+        'assisted=$usedNetworkAssisted',
       );
     } catch (e) {
       _errorController.add('Echec collecte GPS: $e');
@@ -266,23 +271,53 @@ class LocationCollectionService {
     }
   }
 
-  Future<bool> _isNetworkAvailable() async {
+  Future<_NetworkSnapshot> _readNetworkSnapshot() async {
     try {
       final dynamic raw = await Connectivity().checkConnectivity();
+      final List<ConnectivityResult> values;
 
       if (raw is ConnectivityResult) {
-        return raw != ConnectivityResult.none;
+        values = [raw];
+      } else if (raw is List) {
+        values = raw.whereType<ConnectivityResult>().toList();
+      } else {
+        values = const [];
       }
 
-      if (raw is List) {
-        return raw.any(
-          (item) => item is ConnectivityResult && item != ConnectivityResult.none,
-        );
+      if (values.isEmpty || values.contains(ConnectivityResult.none)) {
+        return const _NetworkSnapshot(available: false, type: 'none');
       }
 
-      return false;
+      if (values.contains(ConnectivityResult.wifi)) {
+        return const _NetworkSnapshot(available: true, type: 'wifi');
+      }
+
+      if (values.contains(ConnectivityResult.ethernet)) {
+        return const _NetworkSnapshot(available: true, type: 'ethernet');
+      }
+
+      if (values.contains(ConnectivityResult.mobile)) {
+        final mobileType = await _readMobileGeneration();
+        return _NetworkSnapshot(available: true, type: mobileType);
+      }
+
+      return const _NetworkSnapshot(available: true, type: 'other');
     } catch (_) {
-      return false;
+      return const _NetworkSnapshot(available: false, type: 'unknown');
+    }
+  }
+
+  Future<String> _readMobileGeneration() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return 'mobile';
+    }
+
+    try {
+      final result = await _networkChannel.invokeMethod<String>('getNetworkType');
+      if (result == null || result.isEmpty) return 'mobile';
+      return result.toLowerCase();
+    } on PlatformException {
+      return 'mobile';
     }
   }
 
@@ -326,4 +361,14 @@ class LocationCollectionService {
     _sampleController.close();
     _errorController.close();
   }
+}
+
+class _NetworkSnapshot {
+  final bool available;
+  final String type;
+
+  const _NetworkSnapshot({
+    required this.available,
+    required this.type,
+  });
 }

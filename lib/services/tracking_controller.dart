@@ -118,7 +118,7 @@ class TrackingController extends ChangeNotifier {
 
     final csv = _buildCsv(snapshot);
     if (Platform.isAndroid) {
-      final savedLocation = await _saveCsvToAndroidDownloads(
+      final savedLocation = await _saveCsvToAndroidDownloadsWithRetry(
         fileName: _autoSaveFileName,
         content: csv,
       );
@@ -135,7 +135,7 @@ class TrackingController extends ChangeNotifier {
   String _buildCsv(List<LocationSample> samples) {
     final buffer = StringBuffer()
       ..writeln(
-        'measured_at_utc,latitude,longitude,accuracy,quality,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_assisted',
+        'measured_at_utc,latitude,longitude,accuracy,quality,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_type,network_assisted',
       );
 
     for (final sample in samples) {
@@ -150,6 +150,7 @@ class TrackingController extends ChangeNotifier {
         _num(sample.headingDegrees),
         sample.isMocked ? 'true' : 'false',
         sample.wasNetworkAvailable ? 'yes' : 'no',
+        sample.networkType,
         sample.usedNetworkAssisted ? 'yes' : 'no',
       ].join(','));
     }
@@ -215,6 +216,28 @@ class TrackingController extends ChangeNotifier {
       throw Exception('Emplacement de sauvegarde introuvable');
     }
     return result;
+  }
+
+  Future<String> _saveCsvToAndroidDownloadsWithRetry({
+    required String fileName,
+    required String content,
+  }) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await _saveCsvToAndroidDownloads(
+          fileName: fileName,
+          content: content,
+        );
+      } catch (e) {
+        lastError = e;
+        if (attempt < 3) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
+    }
+
+    throw lastError ?? Exception('Sauvegarde Android impossible');
   }
 
   String _num(double? value) => value == null ? '' : value.toStringAsFixed(2);

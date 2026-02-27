@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../theme/jorapp_theme.dart';
+
 class MapWidget extends StatefulWidget {
   final List<List<LatLng>> paths;
   final List<List<LatLng>> protectedAreas;
@@ -92,9 +94,9 @@ class _MapWidgetState extends State<MapWidget> {
                 .map(
                   (polygon) => Polygon(
                     points: polygon,
-                    borderColor: Colors.red,
+                    borderColor: JorappColors.tealDark,
                     borderStrokeWidth: 2,
-                    color: Colors.red.withOpacity(0.25),
+                    color: JorappColors.lime.withOpacity(0.30),
                     isFilled: true,
                   ),
                 )
@@ -108,8 +110,8 @@ class _MapWidgetState extends State<MapWidget> {
                 .map(
                   (line) => Polyline(
                     points: line,
-                    color: Colors.brown,
-                    strokeWidth: 3,
+                    color: JorappColors.tealDark,
+                    strokeWidth: 3.2,
                   ),
                 )
                 .toList(),
@@ -125,7 +127,7 @@ class _MapWidgetState extends State<MapWidget> {
                     height: 8,
                     child: Container(
                       decoration: const BoxDecoration(
-                        color: Colors.blue,
+                        color: JorappColors.teal,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -143,15 +145,15 @@ class _MapWidgetState extends State<MapWidget> {
                 height: 22,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.25),
+                    color: JorappColors.lime.withOpacity(0.35),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.orange, width: 2),
+                    border: Border.all(color: JorappColors.lime, width: 2),
                   ),
                   child: const Center(
                     child: Icon(
                       Icons.my_location,
                       size: 12,
-                      color: Colors.orange,
+                      color: JorappColors.tealDark,
                     ),
                   ),
                 ),
@@ -168,15 +170,15 @@ class _MapWidgetState extends State<MapWidget> {
                 height: 28,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.2),
+                    color: JorappColors.teal.withOpacity(0.2),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.teal, width: 2),
+                    border: Border.all(color: JorappColors.tealDark, width: 2),
                   ),
                   child: const Center(
                     child: Icon(
                       Icons.place,
                       size: 16,
-                      color: Colors.teal,
+                      color: JorappColors.tealDark,
                     ),
                   ),
                 ),
