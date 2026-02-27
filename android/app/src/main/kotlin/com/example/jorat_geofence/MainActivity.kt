@@ -46,28 +46,38 @@ class MainActivity : FlutterActivity() {
         val resolver = applicationContext.contentResolver
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val existingUri = findExistingDownloadUri(safeName)
+            val downloadRelativePath = "${Environment.DIRECTORY_DOWNLOADS}/"
+            val existingUri = findExistingDownloadUri(safeName, downloadRelativePath)
+                ?: findExistingDownloadUri(safeName, Environment.DIRECTORY_DOWNLOADS)
             if (existingUri != null) {
-                resolver.openOutputStream(existingUri, "wt")?.use { stream ->
-                    stream.write(content.toByteArray(Charsets.UTF_8))
-                } ?: throw IllegalStateException("Impossible d'écrire le fichier CSV existant")
+                writeContentToUri(existingUri, content)
                 return existingUri.toString()
             }
 
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, safeName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, downloadRelativePath)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
 
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: throw IllegalStateException("Impossible de créer le fichier dans Téléchargements")
+            val uri = try {
+                resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            } catch (_: Exception) {
+                null
+            }
+                ?: run {
+                    val fallbackUri = findExistingDownloadUri(safeName, downloadRelativePath)
+                        ?: findExistingDownloadUri(safeName, Environment.DIRECTORY_DOWNLOADS)
+                    if (fallbackUri != null) {
+                        writeContentToUri(fallbackUri, content)
+                        return fallbackUri.toString()
+                    }
+                    throw IllegalStateException("Impossible de créer le fichier dans Téléchargements")
+                }
 
             try {
-                resolver.openOutputStream(uri)?.use { stream ->
-                    stream.write(content.toByteArray(Charsets.UTF_8))
-                } ?: throw IllegalStateException("Impossible d'écrire le fichier CSV")
+                writeContentToUri(uri, content)
 
                 values.clear()
                 values.put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -92,11 +102,27 @@ class MainActivity : FlutterActivity() {
         return file.absolutePath
     }
 
-    private fun findExistingDownloadUri(fileName: String): Uri? {
+    private fun writeContentToUri(uri: Uri, content: String) {
+        val resolver = applicationContext.contentResolver
+        resolver.openOutputStream(uri, "wt")?.use { stream ->
+            stream.write(content.toByteArray(Charsets.UTF_8))
+        } ?: throw IllegalStateException("Impossible d'écrire le fichier CSV")
+    }
+
+    private fun findExistingDownloadUri(fileName: String, relativePath: String? = null): Uri? {
         val resolver = applicationContext.contentResolver
         val projection = arrayOf(MediaStore.MediaColumns._ID)
-        val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?"
-        val selectionArgs = arrayOf(fileName)
+        val (selection, selectionArgs) = if (relativePath != null) {
+            Pair(
+                "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+                arrayOf(fileName, relativePath),
+            )
+        } else {
+            Pair(
+                "${MediaStore.MediaColumns.DISPLAY_NAME} = ?",
+                arrayOf(fileName),
+            )
+        }
 
         resolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
