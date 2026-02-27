@@ -10,11 +10,13 @@ import '../models/location_sample.dart';
 class LocationCollectionService {
   final Duration interval;
   final Duration fixWindow;
+  bool _useNetworkAssisted;
 
   LocationCollectionService({
-    this.interval = const Duration(minutes: 2),
+    this.interval = const Duration(minutes: 1),
     this.fixWindow = const Duration(seconds: 20),
-  });
+    bool useNetworkAssisted = true,
+  }) : _useNetworkAssisted = useNetworkAssisted;
 
   final StreamController<LocationSample> _sampleController =
       StreamController<LocationSample>.broadcast();
@@ -23,6 +25,7 @@ class LocationCollectionService {
 
   Stream<LocationSample> get samples => _sampleController.stream;
   Stream<String> get errors => _errorController.stream;
+  bool get useNetworkAssisted => _useNetworkAssisted;
 
   StreamSubscription<Position>? _positionSubscription;
   Timer? _samplingTimer;
@@ -33,6 +36,22 @@ class LocationCollectionService {
 
   bool _windowOpen = false;
   bool _isEmittingSample = false;
+
+  Future<bool> setUseNetworkAssisted(bool enabled) async {
+    if (_useNetworkAssisted == enabled) return true;
+
+    _useNetworkAssisted = enabled;
+    developer.log(
+      '[LocationCollectionService] mode changed: '
+      '${_useNetworkAssisted ? "network-assisted" : "gps-only"}',
+    );
+
+    final wasRunning = _positionSubscription != null;
+    if (!wasRunning) return true;
+
+    await stop();
+    return start();
+  }
 
   Future<bool> start() async {
     if (_positionSubscription != null) return true;
@@ -56,7 +75,9 @@ class LocationCollectionService {
       );
 
       developer.log(
-        '[LocationCollectionService] stream started interval=$interval window=$fixWindow',
+        '[LocationCollectionService] stream started '
+        'interval=$interval window=$fixWindow mode='
+        '${_useNetworkAssisted ? "network-assisted" : "gps-only"}',
       );
 
       _openSamplingWindow();
@@ -129,6 +150,7 @@ class LocationCollectionService {
 
       final measuredAt = DateTime.now().toUtc();
       final wasNetworkAvailable = await _isNetworkAvailable();
+      final usedNetworkAssisted = _useNetworkAssisted;
 
       _sampleController.add(
         LocationSample(
@@ -141,6 +163,7 @@ class LocationCollectionService {
           headingDegrees: selected.heading,
           isMocked: selected.isMocked,
           wasNetworkAvailable: wasNetworkAvailable,
+          usedNetworkAssisted: usedNetworkAssisted,
         ),
       );
 
@@ -148,7 +171,7 @@ class LocationCollectionService {
         '[LocationCollectionService] sample emitted '
         'lat=${selected.latitude}, lon=${selected.longitude}, '
         'acc=${selected.accuracy}, points=${_windowPositions.length}, '
-        'net=$wasNetworkAvailable',
+        'net=$wasNetworkAvailable, assisted=$usedNetworkAssisted',
       );
     } catch (e) {
       _errorController.add('Echec collecte GPS: $e');
@@ -181,10 +204,12 @@ class LocationCollectionService {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return AndroidSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
+          accuracy: _useNetworkAssisted
+              ? LocationAccuracy.high
+              : LocationAccuracy.bestForNavigation,
           distanceFilter: 0,
           intervalDuration: const Duration(seconds: 1),
-          forceLocationManager: true,
+          forceLocationManager: !_useNetworkAssisted,
           foregroundNotificationConfig: const ForegroundNotificationConfig(
             notificationTitle: 'Collecte GPS active',
             notificationText: 'Mesures en cours en arriere-plan',
@@ -216,8 +241,11 @@ class LocationCollectionService {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return AndroidSettings(
-          accuracy: LocationAccuracy.bestForNavigation,
+          accuracy: _useNetworkAssisted
+              ? LocationAccuracy.high
+              : LocationAccuracy.bestForNavigation,
           distanceFilter: 0,
+          forceLocationManager: !_useNetworkAssisted,
           foregroundNotificationConfig: const ForegroundNotificationConfig(
             notificationTitle: 'Collecte GPS active',
             notificationText: 'Mesures en cours en arriere-plan',

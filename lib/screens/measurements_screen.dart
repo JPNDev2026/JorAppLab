@@ -21,6 +21,7 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
       MethodChannel('jorat/downloads');
 
   bool _isUpdatingCollection = false;
+  bool _isUpdatingLocationMode = false;
   bool _isExporting = false;
 
   @override
@@ -49,6 +50,8 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
         builder: (context, _) {
           final samples = widget.trackingController.samples.reversed.toList();
           final isCollecting = widget.trackingController.isCollecting;
+          final useNetworkAssisted =
+              widget.trackingController.useNetworkAssisted;
 
           return Padding(
             padding: const EdgeInsets.all(12),
@@ -56,22 +59,47 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
               children: [
                 Card(
                   elevation: 1,
-                  child: SwitchListTile(
-                    title: const Text('Localisation active'),
-                    subtitle: Text(
-                      isCollecting
-                          ? 'Collecte GPS en cours'
-                          : 'Collecte GPS arrêtée',
-                    ),
-                    value: isCollecting,
-                    onChanged: _isUpdatingCollection
-                        ? null
-                        : (value) async {
-                            setState(() => _isUpdatingCollection = true);
-                            await widget.trackingController.setCollecting(value);
-                            if (!mounted) return;
-                            setState(() => _isUpdatingCollection = false);
-                          },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Localisation active'),
+                        subtitle: Text(
+                          isCollecting
+                              ? 'Collecte GPS en cours'
+                              : 'Collecte GPS arrêtée',
+                        ),
+                        value: isCollecting,
+                        onChanged: _isUpdatingCollection
+                            ? null
+                            : (value) async {
+                                setState(() => _isUpdatingCollection = true);
+                                await widget.trackingController
+                                    .setCollecting(value);
+                                if (!mounted) return;
+                                setState(() => _isUpdatingCollection = false);
+                              },
+                      ),
+                      const Divider(height: 0),
+                      SwitchListTile(
+                        title: const Text('Localisation assistée par réseau'),
+                        subtitle: Text(
+                          useNetworkAssisted
+                              ? 'Mode rapide (réseau + GNSS)'
+                              : 'Mode GPS pur',
+                        ),
+                        value: useNetworkAssisted,
+                        onChanged: _isUpdatingLocationMode
+                            ? null
+                            : (value) async {
+                                setState(() => _isUpdatingLocationMode = true);
+                                await widget.trackingController
+                                    .setUseNetworkAssisted(value);
+                                if (!mounted) return;
+                                setState(() => _isUpdatingLocationMode = false);
+                              },
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -91,6 +119,7 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
                                   DataColumn(label: Text('Longitude')),
                                   DataColumn(label: Text('Heure')),
                                   DataColumn(label: Text('Précision')),
+                                  DataColumn(label: Text('Réseau')),
                                   DataColumn(label: Text('Aide réseau')),
                                 ],
                                 rows: samples.asMap().entries.map((entry) {
@@ -115,6 +144,9 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
                                       ),
                                       DataCell(
                                         Text(sample.wasNetworkAvailable ? 'Oui' : 'Non'),
+                                      ),
+                                      DataCell(
+                                        Text(sample.usedNetworkAssisted ? 'Oui' : 'Non'),
                                       ),
                                     ],
                                   );
@@ -152,7 +184,7 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
     try {
       final buffer = StringBuffer()
         ..writeln(
-          'measured_at_utc,latitude,longitude,accuracy,altitude_m,speed_mps,heading_deg,is_mocked,network_available',
+          'measured_at_utc,latitude,longitude,accuracy,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_assisted',
         );
 
       for (final sample in samples) {
@@ -166,6 +198,7 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
           _num(sample.headingDegrees),
           sample.isMocked ? 'true' : 'false',
           sample.wasNetworkAvailable ? 'yes' : 'no',
+          sample.usedNetworkAssisted ? 'yes' : 'no',
         ].join(','));
       }
 

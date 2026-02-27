@@ -23,6 +23,7 @@ class TrackingController extends ChangeNotifier {
   List<LocationSample> get samples => List.unmodifiable(_samples);
   LocationSample? get latestSample => _samples.isEmpty ? null : _samples.last;
   bool get isCollecting => _isCollecting;
+  bool get useNetworkAssisted => _locationService.useNetworkAssisted;
   Stream<String> get errors => _errorController.stream;
 
   Future<void> initialize({bool autoStart = true}) async {
@@ -62,6 +63,14 @@ class TrackingController extends ChangeNotifier {
     } else {
       await stop();
     }
+  }
+
+  Future<void> setUseNetworkAssisted(bool enabled) async {
+    final restarted = await _locationService.setUseNetworkAssisted(enabled);
+    if (!restarted && _isCollecting) {
+      _isCollecting = false;
+    }
+    notifyListeners();
   }
 
   @override
