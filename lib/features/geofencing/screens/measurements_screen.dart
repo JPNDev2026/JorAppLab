@@ -6,7 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/location_sample.dart';
 import '../services/tracking_controller.dart';
-import '../theme/jorapp_theme.dart';
+import '../../../theme/jorapp_theme.dart';
 
 class MeasurementsScreen extends StatefulWidget {
   final TrackingController trackingController;

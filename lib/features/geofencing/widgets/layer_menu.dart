@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/jorapp_theme.dart';
+import '../../../theme/jorapp_theme.dart';
 
 class LayerMenu extends StatelessWidget {
   final bool showPaths;

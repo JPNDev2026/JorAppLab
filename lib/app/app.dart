@@ -2,19 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../screens/map_screen.dart';
-import '../services/tracking_controller.dart';
-import '../theme/jorapp_theme.dart';
+import '../features/geofencing/geofencing_controller.dart';
+import '../features/geofencing/services/tracking_controller.dart';
+import 'router.dart';
+import 'theme.dart';
 
-class JoratApp extends StatefulWidget {
-  const JoratApp({super.key});
+class App extends StatefulWidget {
+  const App({super.key});
 
   @override
-  State<JoratApp> createState() => _JoratAppState();
+  State<App> createState() => _AppState();
 }
 
-class _JoratAppState extends State<JoratApp> with WidgetsBindingObserver {
+class _AppState extends State<App> with WidgetsBindingObserver {
   final TrackingController _trackingController = TrackingController();
+  late final GeofencingController _geofencingController =
+      GeofencingController(trackingController: _trackingController);
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class _JoratAppState extends State<JoratApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_trackingController.forceAutoSave());
+    _geofencingController.dispose();
     _trackingController.dispose();
     super.dispose();
   }
@@ -48,8 +52,12 @@ class _JoratAppState extends State<JoratApp> with WidgetsBindingObserver {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'JORAPP',
-      theme: buildJorappTheme(),
-      home: MapScreen(trackingController: _trackingController),
+      theme: buildAppTheme(),
+      initialRoute: AppRouter.home,
+      onGenerateRoute: (settings) => AppRouter.onGenerateRoute(
+        settings,
+        geofencingController: _geofencingController,
+      ),
     );
   }
 }
