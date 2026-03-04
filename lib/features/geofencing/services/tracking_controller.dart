@@ -135,10 +135,11 @@ class TrackingController extends ChangeNotifier {
   String _buildCsv(List<LocationSample> samples) {
     final buffer = StringBuffer()
       ..writeln(
-        'measured_at_utc,latitude,longitude,accuracy,quality,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_type,network_assisted',
+        'measured_at_utc,latitude,longitude,accuracy,quality,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_type,network_assisted,declared_network_type,signal_dbm,voice_capable,network_usage,tcp_latency_median_ms,downlink_kbps',
       );
 
     for (final sample in samples) {
+      final network = sample.networkMeasurement;
       buffer.writeln([
         _csv(sample.measuredAtUtc.toIso8601String()),
         sample.latitude.toStringAsFixed(6),
@@ -152,6 +153,12 @@ class TrackingController extends ChangeNotifier {
         sample.wasNetworkAvailable ? 'yes' : 'no',
         sample.networkType,
         sample.usedNetworkAssisted ? 'yes' : 'no',
+        network?.declaredNetworkType ?? '',
+        network?.signalDbm?.toString() ?? '',
+        _boolYesNoNullable(network?.voiceCapable),
+        network?.usageLabel ?? '',
+        _num(network?.tcpLatencyMedianMs),
+        _num(network?.downlinkKbps),
       ].join(','));
     }
 
@@ -241,6 +248,11 @@ class TrackingController extends ChangeNotifier {
   }
 
   String _num(double? value) => value == null ? '' : value.toStringAsFixed(2);
+
+  String _boolYesNoNullable(bool? value) {
+    if (value == null) return '';
+    return value ? 'yes' : 'no';
+  }
 
   String _csv(String value) {
     final escaped = value.replaceAll('"', '""');

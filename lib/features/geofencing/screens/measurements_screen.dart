@@ -196,10 +196,17 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
                                     DataColumn(label: Text('Qualite')),
                                     DataColumn(label: Text('Reseau')),
                                     DataColumn(label: Text('Aide reseau')),
+                                    DataColumn(label: Text('Radio')),
+                                    DataColumn(label: Text('Signal dBm')),
+                                    DataColumn(label: Text('Voix')),
+                                    DataColumn(label: Text('Usage')),
+                                    DataColumn(label: Text('Latence ms')),
+                                    DataColumn(label: Text('Debit kbps')),
                                   ],
                                   rows: samples.asMap().entries.map((entry) {
                                     final index = entry.key;
                                     final sample = entry.value;
+                                    final network = sample.networkMeasurement;
                                     return DataRow.byIndex(
                                       index: index,
                                       onSelectChanged: (_) =>
@@ -229,6 +236,29 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
                                                 ? 'Oui'
                                                 : 'Non',
                                           ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            _formatNetworkType(
+                                              network?.declaredNetworkType ??
+                                                  sample.networkType,
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(
+                                            network?.signalDbm?.toString() ?? '',
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text(_boolToOuiNon(network?.voiceCapable)),
+                                        ),
+                                        DataCell(Text(network?.usageLabel ?? '')),
+                                        DataCell(
+                                          Text(_formatMetric(network?.tcpLatencyMedianMs)),
+                                        ),
+                                        DataCell(
+                                          Text(_formatMetric(network?.downlinkKbps)),
                                         ),
                                       ],
                                     );
@@ -290,10 +320,11 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
     try {
       final buffer = StringBuffer()
         ..writeln(
-          'measured_at_utc,latitude,longitude,accuracy,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_type,network_assisted',
+          'measured_at_utc,latitude,longitude,accuracy,altitude_m,speed_mps,heading_deg,is_mocked,network_available,network_type,network_assisted,declared_network_type,signal_dbm,voice_capable,network_usage,tcp_latency_median_ms,downlink_kbps',
         );
 
       for (final sample in samples) {
+        final network = sample.networkMeasurement;
         buffer.writeln([
           _csv(sample.measuredAtUtc.toIso8601String()),
           sample.latitude.toStringAsFixed(6),
@@ -306,6 +337,12 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
           sample.wasNetworkAvailable ? 'yes' : 'no',
           sample.networkType,
           sample.usedNetworkAssisted ? 'yes' : 'no',
+          network?.declaredNetworkType ?? '',
+          network?.signalDbm?.toString() ?? '',
+          _boolToYesNo(network?.voiceCapable),
+          network?.usageLabel ?? '',
+          _num(network?.tcpLatencyMedianMs),
+          _num(network?.downlinkKbps),
         ].join(','));
       }
 
@@ -338,6 +375,21 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
   }
 
   String _num(double? value) => value == null ? '' : value.toStringAsFixed(2);
+
+  String _formatMetric(double? value) {
+    if (value == null) return '';
+    return value.toStringAsFixed(1);
+  }
+
+  String _boolToOuiNon(bool? value) {
+    if (value == null) return '';
+    return value ? 'Oui' : 'Non';
+  }
+
+  String _boolToYesNo(bool? value) {
+    if (value == null) return '';
+    return value ? 'yes' : 'no';
+  }
 
   String _csv(String value) {
     final escaped = value.replaceAll('"', '""');

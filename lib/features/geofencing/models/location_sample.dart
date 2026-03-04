@@ -1,3 +1,5 @@
+import 'network_measurement.dart';
+
 class LocationSample {
   final DateTime measuredAtUtc;
   final double latitude;
@@ -10,6 +12,7 @@ class LocationSample {
   final bool wasNetworkAvailable;
   final bool usedNetworkAssisted;
   final String networkType;
+  final NetworkMeasurement? networkMeasurement;
 
   const LocationSample({
     required this.measuredAtUtc,
@@ -20,6 +23,7 @@ class LocationSample {
     required this.wasNetworkAvailable,
     required this.usedNetworkAssisted,
     required this.networkType,
+    this.networkMeasurement,
     this.altitudeMeters,
     this.speedMps,
     this.headingDegrees,

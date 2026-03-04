@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -7,9 +8,16 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/location_sample.dart';
+import '../models/network_measurement.dart';
 
 class LocationCollectionService {
   static const MethodChannel _networkChannel = MethodChannel('jorat/network');
+  static const List<String> _tcpProbeHosts = ['8.8.8.8', '1.1.1.1', '9.9.9.9'];
+  static const List<String> _downlinkProbeUrls = [
+    'https://speed.cloudflare.com/__down?bytes=50000',
+    'https://proof.ovh.net/files/100Kb.dat',
+  ];
+  static const int _downlinkProbeTargetBytes = 50 * 1024;
 
   final Duration interval;
   final Duration fixWindow;
@@ -152,7 +160,10 @@ class LocationCollectionService {
       );
 
       final measuredAt = DateTime.now().toUtc();
-      final networkSnapshot = await _readNetworkSnapshot();
+      final networkSnapshotFuture = _readNetworkSnapshot();
+      final networkMeasurementFuture = _readNetworkMeasurement();
+      final networkSnapshot = await networkSnapshotFuture;
+      final networkMeasurement = await networkMeasurementFuture;
       final usedNetworkAssisted = _useNetworkAssisted;
 
       _sampleController.add(
@@ -168,6 +179,7 @@ class LocationCollectionService {
           wasNetworkAvailable: networkSnapshot.available,
           usedNetworkAssisted: usedNetworkAssisted,
           networkType: networkSnapshot.type,
+          networkMeasurement: networkMeasurement,
         ),
       );
 
@@ -176,6 +188,12 @@ class LocationCollectionService {
         'lat=${selected.latitude}, lon=${selected.longitude}, '
         'acc=${selected.accuracy}, points=${_windowPositions.length}, '
         'net=${networkSnapshot.available}, netType=${networkSnapshot.type}, '
+        'radio=${networkMeasurement?.declaredNetworkType}, '
+        'dbm=${networkMeasurement?.signalDbm}, '
+        'voice=${networkMeasurement?.voiceCapable}, '
+        'tcp=${networkMeasurement?.tcpLatencyMedianMs}, '
+        'down=${networkMeasurement?.downlinkKbps}, '
+        'usage=${networkMeasurement?.usageLabel}, '
         'assisted=$usedNetworkAssisted',
       );
     } catch (e) {
@@ -321,6 +339,185 @@ class LocationCollectionService {
     }
   }
 
+  Future<NetworkMeasurement?> _readNetworkMeasurement() async {
+    final radioFuture = _readRadioSnapshot();
+    final tcpFuture = _probeTcpLatencyMedianMs();
+    final downlinkFuture = _probeDownlinkKbps();
+
+    final radio = await radioFuture;
+    final tcpLatency = await tcpFuture;
+    final downlink = await downlinkFuture;
+
+    if (radio == null && tcpLatency == null && downlink == null) {
+      return null;
+    }
+
+    final declaredType = radio?.declaredNetworkType ?? 'unknown';
+    final signalDbm = radio?.signalDbm;
+    final voiceCapable = radio?.voiceCapable;
+
+    return NetworkMeasurement(
+      declaredNetworkType: declaredType,
+      signalDbm: signalDbm,
+      voiceCapable: voiceCapable,
+      tcpLatencyMedianMs: tcpLatency,
+      downlinkKbps: downlink,
+      usageLevel: NetworkMeasurement.deriveUsageLevel(
+        declaredNetworkType: declaredType,
+        voiceCapable: voiceCapable,
+        tcpLatencyMedianMs: tcpLatency,
+        downlinkKbps: downlink,
+      ),
+    );
+  }
+
+  Future<_RadioSnapshot?> _readRadioSnapshot() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+
+    try {
+      final result = await _networkChannel.invokeMapMethod<String, dynamic>(
+        'getRadioSnapshot',
+      );
+      if (result == null) return null;
+
+      final declaredType =
+          (result['declaredNetworkType'] as String? ?? 'unknown').toLowerCase();
+
+      final signalDbm = _toIntOrNull(result['signalDbm']);
+      final voiceCapable = result['voiceCapable'] as bool?;
+
+      return _RadioSnapshot(
+        declaredNetworkType: declaredType,
+        signalDbm: signalDbm,
+        voiceCapable: voiceCapable,
+      );
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  Future<double?> _probeTcpLatencyMedianMs() async {
+    final futures = _tcpProbeHosts
+        .map(
+          (host) => _probeTcpHostLatencyMs(
+            host: host,
+            port: 53,
+            timeout: const Duration(seconds: 2),
+          ),
+        )
+        .toList();
+
+    final samples = await Future.wait<double?>(futures);
+    final valid = samples.whereType<double>().toList()..sort();
+    if (valid.isEmpty) return null;
+    return _median(valid);
+  }
+
+  Future<double?> _probeTcpHostLatencyMs({
+    required String host,
+    required int port,
+    required Duration timeout,
+  }) async {
+    Socket? socket;
+    final stopwatch = Stopwatch()..start();
+    try {
+      socket = await Socket.connect(host, port, timeout: timeout);
+      stopwatch.stop();
+      return stopwatch.elapsedMicroseconds / 1000.0;
+    } catch (_) {
+      return null;
+    } finally {
+      socket?.destroy();
+    }
+  }
+
+  Future<double?> _probeDownlinkKbps() async {
+    for (final url in _downlinkProbeUrls) {
+      final kbps = await _measureDownlinkKbps(
+        url: url,
+        timeout: const Duration(seconds: 4),
+        targetBytes: _downlinkProbeTargetBytes,
+      );
+      if (kbps != null) return kbps;
+    }
+    return null;
+  }
+
+  Future<double?> _measureDownlinkKbps({
+    required String url,
+    required Duration timeout,
+    required int targetBytes,
+  }) async {
+    final client = HttpClient()
+      ..connectionTimeout = timeout
+      ..idleTimeout = timeout;
+
+    try {
+      final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
+      request.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
+      request.headers.set(HttpHeaders.pragmaHeader, 'no-cache');
+      request.headers.set(HttpHeaders.acceptEncodingHeader, 'identity');
+      request.headers.set(
+        HttpHeaders.rangeHeader,
+        'bytes=0-${targetBytes - 1}',
+      );
+
+      final response = await request.close().timeout(timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      var received = 0;
+      final transferStopwatch = Stopwatch();
+      await for (final chunk in response.timeout(timeout)) {
+        if (!transferStopwatch.isRunning) {
+          transferStopwatch.start();
+        }
+        received += chunk.length;
+        if (received >= targetBytes) {
+          break;
+        }
+      }
+      if (transferStopwatch.isRunning) {
+        transferStopwatch.stop();
+      }
+
+      if (received <= 0) return null;
+      final seconds = transferStopwatch.elapsedMicroseconds / 1000000.0;
+      if (seconds <= 0) return null;
+
+      final kbps = (received * 8.0) / 1000.0 / seconds;
+      if (kbps.isNaN || kbps.isInfinite) return null;
+      developer.log(
+        '[LocationCollectionService] downlink probe url=$url bytes=$received '
+        'seconds=$seconds kbps=$kbps',
+      );
+      return kbps;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  double _median(List<double> sortedValues) {
+    if (sortedValues.isEmpty) return 0;
+    final middle = sortedValues.length ~/ 2;
+    if (sortedValues.length.isOdd) {
+      return sortedValues[middle];
+    }
+    return (sortedValues[middle - 1] + sortedValues[middle]) / 2.0;
+  }
+
+  int? _toIntOrNull(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
   Future<bool> _ensureLocationReady() async {
     final enabled = await Geolocator.isLocationServiceEnabled();
     if (!enabled) {
@@ -370,5 +567,17 @@ class _NetworkSnapshot {
   const _NetworkSnapshot({
     required this.available,
     required this.type,
+  });
+}
+
+class _RadioSnapshot {
+  final String declaredNetworkType;
+  final int? signalDbm;
+  final bool? voiceCapable;
+
+  const _RadioSnapshot({
+    required this.declaredNetworkType,
+    required this.signalDbm,
+    required this.voiceCapable,
   });
 }

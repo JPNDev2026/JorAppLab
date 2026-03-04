@@ -9,6 +9,13 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.telephony.CellInfo
+import android.telephony.CellInfoCdma
+import android.telephony.CellInfoGsm
+import android.telephony.CellInfoLte
+import android.telephony.CellInfoNr
+import android.telephony.CellInfoTdscdma
+import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -51,14 +58,28 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method == "getNetworkType") {
-                    try {
-                        result.success(getNetworkType())
-                    } catch (_: Exception) {
-                        result.success("unknown")
+                when (call.method) {
+                    "getNetworkType" -> {
+                        try {
+                            result.success(getNetworkType())
+                        } catch (_: Exception) {
+                            result.success("unknown")
+                        }
                     }
-                } else {
-                    result.notImplemented()
+                    "getRadioSnapshot" -> {
+                        try {
+                            result.success(getRadioSnapshot())
+                        } catch (_: Exception) {
+                            result.success(
+                                mapOf(
+                                    "declaredNetworkType" to "unknown",
+                                    "signalDbm" to null,
+                                    "voiceCapable" to null
+                                )
+                            )
+                        }
+                    }
+                    else -> result.notImplemented()
                 }
             }
     }
@@ -266,6 +287,89 @@ class MainActivity : FlutterActivity() {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> getMobileGeneration()
             else -> "other"
         }
+    }
+
+    private fun getRadioSnapshot(): Map<String, Any?> {
+        val connectivityManager =
+            getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+
+        val declaredType = run {
+            if (connectivityManager == null) {
+                "unknown"
+            } else {
+                val network = connectivityManager.activeNetwork
+                val capabilities = if (network != null) {
+                    connectivityManager.getNetworkCapabilities(network)
+                } else {
+                    null
+                }
+
+                if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true) {
+                    normalizeDeclaredNetworkType(getMobileGeneration())
+                } else {
+                    "none"
+                }
+            }
+        }
+
+        val signalDbm = telephonyManager?.let { tm ->
+            getSignalDbm(tm)
+        }
+
+        val voiceCapable = try {
+            telephonyManager?.isVoiceCapable
+        } catch (_: Exception) {
+            null
+        }
+
+        return mapOf(
+            "declaredNetworkType" to declaredType,
+            "signalDbm" to signalDbm,
+            "voiceCapable" to voiceCapable
+        )
+    }
+
+    private fun normalizeDeclaredNetworkType(raw: String): String {
+        return when (raw.lowercase()) {
+            "2g", "3g", "4g", "5g", "none" -> raw.lowercase()
+            else -> "unknown"
+        }
+    }
+
+    private fun getSignalDbm(telephonyManager: TelephonyManager): Int? {
+        try {
+            val fromSignalStrength = telephonyManager.signalStrength
+                ?.cellSignalStrengths
+                ?.map { it.dbm }
+                ?.firstOrNull { it != Int.MAX_VALUE && it in -160..-20 }
+            if (fromSignalStrength != null) {
+                return fromSignalStrength
+            }
+        } catch (_: Exception) {
+        }
+
+        return try {
+            val infos: List<CellInfo> = telephonyManager.allCellInfo ?: emptyList()
+            val target = infos.firstOrNull { it.isRegistered } ?: infos.firstOrNull()
+            when (target) {
+                is CellInfoNr -> normalizeDbm(target.cellSignalStrength.dbm)
+                is CellInfoLte -> normalizeDbm(target.cellSignalStrength.dbm)
+                is CellInfoWcdma -> normalizeDbm(target.cellSignalStrength.dbm)
+                is CellInfoTdscdma -> normalizeDbm(target.cellSignalStrength.dbm)
+                is CellInfoGsm -> normalizeDbm(target.cellSignalStrength.dbm)
+                is CellInfoCdma -> normalizeDbm(target.cellSignalStrength.dbm)
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun normalizeDbm(value: Int): Int? {
+        if (value == Int.MAX_VALUE) return null
+        if (value !in -160..-20) return null
+        return value
     }
 
     private fun getMobileGeneration(): String {
