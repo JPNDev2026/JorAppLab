@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../theme/jorapp_theme.dart';
 import '../../geofencing/geofencing_controller.dart';
-import '../../geofencing/models/location_sample.dart';
 import '../models/audio_point.dart';
 import '../models/balade.dart';
+import '../services/audio_guide_player_service.dart';
 
 class AudioGuideBaladeScreen extends StatefulWidget {
   final Balade balade;
@@ -26,22 +28,42 @@ class AudioGuideBaladeScreen extends StatefulWidget {
 
 class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
   static const Distance _distance = Distance();
+  final AudioGuidePlayerService _playerService = AudioGuidePlayerService();
+  DateTime? _lastEvaluatedSampleAt;
+  bool _isCheckingZone = false;
+  bool _autoPlaySuppressedUntilNextSample = false;
+  Set<String> _insideZoneIds = <String>{};
 
   @override
   void initState() {
     super.initState();
     widget.geofencingController.addListener(_onControllerChanged);
+    _playerService.addListener(_onPlayerChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkZonesForPlayback());
+    });
   }
 
   @override
   void dispose() {
     widget.geofencingController.removeListener(_onControllerChanged);
+    _playerService.removeListener(_onPlayerChanged);
+    _playerService.dispose();
     super.dispose();
   }
 
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
+    unawaited(_checkZonesForPlayback());
+  }
+
+  void _onPlayerChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (!_playerService.hasActiveTrack) {
+      unawaited(_checkZonesForPlayback());
+    }
   }
 
   LatLng _initialCenter() {
@@ -75,6 +97,94 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
         bearing,
       );
     });
+  }
+
+  Future<void> _checkZonesForPlayback() async {
+    if (_isCheckingZone) return;
+
+    final latestSample = widget.geofencingController.latestSample;
+    if (latestSample == null) return;
+
+    _isCheckingZone = true;
+    try {
+      final isNewSample = _lastEvaluatedSampleAt != latestSample.measuredAtUtc;
+      _lastEvaluatedSampleAt = latestSample.measuredAtUtc;
+      if (isNewSample) {
+        _autoPlaySuppressedUntilNextSample = false;
+      }
+
+      final currentPosition = LatLng(
+        latestSample.latitude,
+        latestSample.longitude,
+      );
+
+      final insideZoneIds = <String>{};
+      for (final point in widget.points) {
+        final distanceMeters = _distance.as(
+          LengthUnit.Meter,
+          currentPosition,
+          LatLng(point.latCentre, point.lngCentre),
+        );
+        if (distanceMeters <= point.rayonMetres) {
+          insideZoneIds.add(point.id);
+        }
+      }
+      _insideZoneIds = insideZoneIds;
+
+      if (_autoPlaySuppressedUntilNextSample || _playerService.hasActiveTrack) {
+        return;
+      }
+
+      AudioPoint? pointToPlay;
+      for (final point in widget.points) {
+        if (_playerService.hasPlayed(point.id)) continue;
+        if (_insideZoneIds.contains(point.id)) {
+          pointToPlay = point;
+          break;
+        }
+      }
+
+      if (pointToPlay == null) return;
+
+      await _playerService.playPoint(pointToPlay);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lecture audio: ${pointToPlay.titre}'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lecture audio impossible: $error')),
+      );
+    } finally {
+      _isCheckingZone = false;
+    }
+  }
+
+  Future<void> _playPointManually(AudioPoint point) async {
+    try {
+      await _playerService.playPoint(point);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lecture audio: ${point.titre}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lecture audio impossible: $error')),
+      );
+    }
+  }
+
+  Future<void> _pauseAudio() async {
+    await _playerService.pause();
+  }
+
+  Future<void> _stopAudio() async {
+    _autoPlaySuppressedUntilNextSample = true;
+    await _playerService.stop();
   }
 
   @override
@@ -153,13 +263,7 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
                                 height: 54,
                                 child: GestureDetector(
                                   onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '${point.titre} • rayon ${point.rayonMetres.toStringAsFixed(0)} m',
-                                        ),
-                                      ),
-                                    );
+                                    unawaited(_playPointManually(point));
                                   },
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -232,7 +336,13 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
               minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: _AudioGuideStatusCard(
                 pointCount: widget.points.length,
-                latestSample: latestSample,
+                currentTitle: _playerService.currentTitle,
+                isPlaying: _playerService.isPlaying,
+                isPaused: _playerService.isPaused,
+                hasActiveTrack: _playerService.hasActiveTrack,
+                playedCount: _playerService.playedPointIds.length,
+                onPause: _pauseAudio,
+                onStop: _stopAudio,
               ),
             ),
           ],
@@ -244,21 +354,34 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
 
 class _AudioGuideStatusCard extends StatelessWidget {
   final int pointCount;
-  final LocationSample? latestSample;
+  final String? currentTitle;
+  final bool isPlaying;
+  final bool isPaused;
+  final bool hasActiveTrack;
+  final int playedCount;
+  final Future<void> Function() onPause;
+  final Future<void> Function() onStop;
 
   const _AudioGuideStatusCard({
     required this.pointCount,
-    required this.latestSample,
+    required this.currentTitle,
+    required this.isPlaying,
+    required this.isPaused,
+    required this.hasActiveTrack,
+    required this.playedCount,
+    required this.onPause,
+    required this.onStop,
   });
 
   @override
   Widget build(BuildContext context) {
-    final locationText = latestSample == null
-        ? 'Aucune position GPS disponible pour le moment.'
-        : 'Position actuelle: '
-            '${latestSample!.latitude.toStringAsFixed(6)}, '
-            '${latestSample!.longitude.toStringAsFixed(6)} '
-            '• précision ${latestSample!.accuracyMeters.toStringAsFixed(1)}';
+    final playbackText = currentTitle == null
+        ? 'Touchez un point audio sur la carte pour lancer la lecture.'
+        : isPlaying
+            ? 'Lecture en cours: $currentTitle'
+            : isPaused
+                ? 'Lecture en pause: $currentTitle'
+                : 'Audio sélectionné: $currentTitle';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -294,13 +417,59 @@ class _AudioGuideStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            locationText,
+            playbackText,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
+              fontWeight: FontWeight.w700,
               height: 1.35,
             ),
           ),
+          if (hasActiveTrack) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: isPlaying ? onPause : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.16),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.pause_rounded),
+                  label: const Text('Pause'),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.tonalIcon(
+                  onPressed: onStop,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.16),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.stop_rounded),
+                  label: const Text('Stop'),
+                ),
+                const Spacer(),
+                Text(
+                  'Lus: $playedCount / $pointCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 10),
+            Text(
+              'Lus: $playedCount / $pointCount',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
