@@ -6,8 +6,13 @@ import '../auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   final AuthService authService;
+  final String? redirectRoute;
 
-  const RegisterScreen({super.key, required this.authService});
+  const RegisterScreen({
+    super.key,
+    required this.authService,
+    this.redirectRoute,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -50,7 +55,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _nameController.text.trim(),
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/');
+      Navigator.pushReplacementNamed(
+        context,
+        widget.redirectRoute ?? '/',
+      );
     } on ClientException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

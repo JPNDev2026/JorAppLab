@@ -6,8 +6,13 @@ import '../auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthService authService;
+  final String? redirectRoute;
 
-  const LoginScreen({super.key, required this.authService});
+  const LoginScreen({
+    super.key,
+    required this.authService,
+    this.redirectRoute,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -35,7 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/');
+      Navigator.pushReplacementNamed(
+        context,
+        widget.redirectRoute ?? '/',
+      );
     } on ClientException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -108,7 +116,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextButton(
                         onPressed: _isSubmitting
                             ? null
-                            : () => Navigator.pushNamed(context, '/register'),
+                            : () => Navigator.pushNamed(
+                                context,
+                                '/register',
+                                arguments: widget.redirectRoute,
+                              ),
                         child: const Text('Creer un compte'),
                       ),
                       TextButton(
@@ -117,6 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             : () => Navigator.pushNamed(
                                 context,
                                 '/forgot-password',
+                                arguments: widget.redirectRoute,
                               ),
                         child: const Text('Mot de passe oublie'),
                       ),

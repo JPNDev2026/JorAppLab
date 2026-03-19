@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../app/router.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../geofencing_controller.dart';
@@ -111,16 +112,15 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _openAudioGuide() async {
     if (!widget.authService.isLoggedIn) {
-      await Navigator.pushNamed(context, '/login');
+      await Navigator.pushNamed(
+        context,
+        AppRouter.login,
+        arguments: AppRouter.audioGuide,
+      );
       return;
     }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Audio-guide à venir. Vous êtes déjà connecté.'),
-      ),
-    );
+    await Navigator.pushNamed(context, AppRouter.audioGuide);
   }
 
   @override
