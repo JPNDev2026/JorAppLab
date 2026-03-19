@@ -32,7 +32,9 @@ class AppRouter {
       case audioGuide:
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => const AudioGuideScreen(),
+          builder: (_) => AudioGuideScreen(
+            geofencingController: geofencingController,
+          ),
         );
       case login:
         return MaterialPageRoute<void>(

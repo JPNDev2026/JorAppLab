@@ -3,23 +3,82 @@ import 'dart:developer' as developer;
 
 import '../../../core/services/pb_client.dart';
 import '../../../theme/jorapp_theme.dart';
+import '../../geofencing/geofencing_controller.dart';
 import '../models/balade.dart';
 import '../services/audio_guide_service.dart';
+import 'audio_guide_balade_screen.dart';
 
 class AudioGuideScreen extends StatefulWidget {
-  const AudioGuideScreen({super.key});
+  final GeofencingController geofencingController;
+
+  const AudioGuideScreen({
+    super.key,
+    required this.geofencingController,
+  });
 
   @override
   State<AudioGuideScreen> createState() => _AudioGuideScreenState();
 }
 
 class _AudioGuideScreenState extends State<AudioGuideScreen> {
-  late final Future<List<Balade>> _baladesFuture =
-      AudioGuideService().fetchBalades();
+  final AudioGuideService _audioGuideService = AudioGuideService();
+  late final Future<List<Balade>> _baladesFuture = _audioGuideService.fetchBalades();
+  String? _loadingBaladeId;
+  double _downloadProgress = 0;
 
   String? get _authToken {
     final token = PbClient.instance.pb.authStore.token;
     return token.isEmpty ? null : token;
+  }
+
+  Future<void> _openBalade(Balade balade) async {
+    if (_loadingBaladeId != null) return;
+
+    setState(() {
+      _loadingBaladeId = balade.id;
+      _downloadProgress = 0;
+    });
+
+    try {
+      final points = await _audioGuideService.fetchAudioPoints(balade.id);
+      if (points.isEmpty) {
+        throw Exception('Aucun point audio disponible pour cette balade.');
+      }
+
+      final downloadedPoints = await _audioGuideService.downloadBalade(
+        balade.id,
+        points,
+        (progress) {
+          if (!mounted) return;
+          setState(() {
+            _downloadProgress = progress;
+          });
+        },
+      );
+
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AudioGuideBaladeScreen(
+            balade: balade,
+            points: downloadedPoints,
+            geofencingController: widget.geofencingController,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingBaladeId = null;
+          _downloadProgress = 0;
+        });
+      }
+    }
   }
 
   @override
@@ -152,15 +211,19 @@ class _AudioGuideScreenState extends State<AudioGuideScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ...balades.map(
-                  (balade) => Padding(
+                ...balades.map((balade) {
+                  final isLoading = _loadingBaladeId == balade.id;
+                  return Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: _BaladeCard(
                       balade: balade,
                       authToken: _authToken,
+                      isLoading: isLoading,
+                      progress: isLoading ? _downloadProgress : null,
+                      onTap: () => _openBalade(balade),
                     ),
-                  ),
-                ),
+                  );
+                }),
               ],
             );
           },
@@ -173,10 +236,16 @@ class _AudioGuideScreenState extends State<AudioGuideScreen> {
 class _BaladeCard extends StatelessWidget {
   final Balade balade;
   final String? authToken;
+  final bool isLoading;
+  final double? progress;
+  final VoidCallback onTap;
 
   const _BaladeCard({
     required this.balade,
     required this.authToken,
+    required this.isLoading,
+    required this.progress,
+    required this.onTap,
   });
 
   @override
@@ -185,15 +254,7 @@ class _BaladeCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       elevation: 0,
       child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'La balade "${balade.nom}" sera branchée à l’étape suivante.',
-              ),
-            ),
-          );
-        },
+        onTap: isLoading ? null : onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -279,14 +340,32 @@ class _BaladeCard extends StatelessWidget {
                       color: JorappColors.surfaceStrong,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.chevron_right_rounded,
-                      color: JorappColors.tealDark,
-                    ),
+                    child: isLoading
+                        ? Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              value: progress == null || progress == 0
+                                  ? null
+                                  : progress,
+                              color: JorappColors.tealDark,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.chevron_right_rounded,
+                            color: JorappColors.tealDark,
+                          ),
                   ),
                 ],
               ),
             ),
+            if (isLoading)
+              LinearProgressIndicator(
+                value: progress == null || progress == 0 ? null : progress,
+                minHeight: 5,
+                color: JorappColors.teal,
+                backgroundColor: JorappColors.surfaceStrong,
+              ),
           ],
         ),
       ),
