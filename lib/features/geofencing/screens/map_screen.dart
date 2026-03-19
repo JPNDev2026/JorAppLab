@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../theme/jorapp_theme.dart';
+import '../../auth/auth_service.dart';
 import '../geofencing_controller.dart';
 import '../models/location_sample.dart';
 import '../widgets/layer_menu.dart';
@@ -12,9 +13,14 @@ import '../widgets/map_widget.dart';
 import 'measurements_screen.dart';
 
 class MapScreen extends StatefulWidget {
+  final AuthService authService;
   final GeofencingController geofencingController;
 
-  const MapScreen({super.key, required this.geofencingController});
+  const MapScreen({
+    super.key,
+    required this.authService,
+    required this.geofencingController,
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -103,6 +109,20 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Future<void> _openAudioGuide() async {
+    if (!widget.authService.isLoggedIn) {
+      await Navigator.pushNamed(context, '/login');
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Audio-guide à venir. Vous êtes déjà connecté.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     developer.log(
@@ -143,6 +163,16 @@ class _MapScreenState extends State<MapScreen> {
           ],
         ),
         actions: [
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              backgroundColor: JorappColors.surfaceStrong,
+              foregroundColor: JorappColors.tealDark,
+            ),
+            icon: const Icon(Icons.headset_mic_rounded),
+            tooltip: 'Audio-guide',
+            onPressed: _openAudioGuide,
+          ),
+          const SizedBox(width: 6),
           IconButton.filledTonal(
             style: IconButton.styleFrom(
               backgroundColor: JorappColors.surfaceStrong,

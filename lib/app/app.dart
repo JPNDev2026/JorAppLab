@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../features/auth/auth_service.dart';
 import '../features/geofencing/geofencing_controller.dart';
 import '../features/geofencing/services/tracking_controller.dart';
 import 'router.dart';
@@ -15,6 +16,7 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver {
+  final AuthService _authService = AuthService();
   final TrackingController _trackingController = TrackingController();
   late final GeofencingController _geofencingController =
       GeofencingController(trackingController: _trackingController);
@@ -42,6 +44,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_trackingController.forceAutoSave());
+    _authService.dispose();
     _geofencingController.dispose();
     _trackingController.dispose();
     super.dispose();
@@ -56,6 +59,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       initialRoute: AppRouter.home,
       onGenerateRoute: (settings) => AppRouter.onGenerateRoute(
         settings,
+        authService: _authService,
         geofencingController: _geofencingController,
       ),
     );
