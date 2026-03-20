@@ -4,7 +4,6 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../../app/router.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../geofencing_controller.dart';
@@ -36,6 +35,11 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     developer.log(
       '[MapScreen] initState loader=${GeofencingController.loaderVersion}',
+    );
+    unawaited(
+      widget.geofencingController.trackingController.initialize(
+        autoStart: true,
+      ),
     );
     unawaited(widget.geofencingController.bootstrapLayers());
     widget.geofencingController.addListener(_onControllerChanged);
@@ -110,19 +114,6 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Future<void> _openAudioGuide() async {
-    if (!widget.authService.isLoggedIn) {
-      await Navigator.pushNamed(
-        context,
-        AppRouter.login,
-        arguments: AppRouter.audioGuide,
-      );
-      return;
-    }
-
-    await Navigator.pushNamed(context, AppRouter.audioGuide);
-  }
-
   @override
   Widget build(BuildContext context) {
     developer.log(
@@ -134,45 +125,36 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 76,
         title: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
-                width: 28,
-                height: 28,
+                width: 36,
+                height: 36,
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'JORAPP',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  'JorAppLab',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                 ),
                 Text(
                   'Parc du Jorat',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ],
         ),
         actions: [
-          IconButton.filledTonal(
-            style: IconButton.styleFrom(
-              backgroundColor: JorappColors.surfaceStrong,
-              foregroundColor: JorappColors.tealDark,
-            ),
-            icon: const Icon(Icons.headset_mic_rounded),
-            tooltip: 'Audio-guide',
-            onPressed: _openAudioGuide,
-          ),
-          const SizedBox(width: 6),
           IconButton.filledTonal(
             style: IconButton.styleFrom(
               backgroundColor: JorappColors.surfaceStrong,

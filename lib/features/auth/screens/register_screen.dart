@@ -38,6 +38,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (_isSubmitting) return;
 
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Le champ Nom est obligatoire.'),
+        ),
+      );
+      return;
+    }
+
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -163,9 +172,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (response is Map<String, dynamic>) {
       final message = response['message'];
       if (message is String && message.isNotEmpty) {
+        final data = response['data'];
+        final details = _extractResponseDetails(data);
+        if (details.isNotEmpty) {
+          return '$message: $details';
+        }
         return message;
       }
     }
     return e.toString();
+  }
+
+  String _extractResponseDetails(dynamic data) {
+    if (data is! Map<String, dynamic>) return '';
+
+    final messages = <String>[];
+    data.forEach((key, value) {
+      if (value is Map<String, dynamic>) {
+        final message = value['message'];
+        if (message is String && message.isNotEmpty) {
+          messages.add('$key: $message');
+        }
+      }
+    });
+    return messages.join(' | ');
   }
 }

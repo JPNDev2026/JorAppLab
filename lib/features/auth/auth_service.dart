@@ -26,9 +26,12 @@ class AuthService extends ChangeNotifier {
 
   Future<void> register(String email, String password, String name) async {
     try {
+      final username = name.trim();
       await pb.collection('users').create(
         body: {
+          'username': username,
           'email': email,
+          'emailVisibility': true,
           'password': password,
           'passwordConfirm': password,
           'name': name,

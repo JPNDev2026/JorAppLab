@@ -70,6 +70,7 @@ flutter:
     - assets/data/aire_protegee.geojson
     - assets/data/chemins.geojson
     - assets/branding/jorapp_logo.png
+    - assets/welcome/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

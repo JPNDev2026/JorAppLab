@@ -32,13 +32,16 @@ class _MeasurementsScreenState extends State<MeasurementsScreen> {
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
-                width: 26,
-                height: 26,
+                width: 30,
+                height: 30,
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 8),
-            const Text('Tableau des mesures'),
+            const SizedBox(width: 10),
+            const Text(
+              'Tableau des mesures',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
         actions: [

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/auth_service.dart';
 import '../features/geofencing/geofencing_controller.dart';
 import '../features/geofencing/services/tracking_controller.dart';
+import '../features/welcome/screens/welcome_screen.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -25,10 +26,6 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await _trackingController.initialize(autoStart: true);
-    });
   }
 
   @override
@@ -56,7 +53,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       title: 'JORAPP',
       theme: buildAppTheme(),
-      initialRoute: AppRouter.home,
+      home: const WelcomeScreen(),
       onGenerateRoute: (settings) => AppRouter.onGenerateRoute(
         settings,
         authService: _authService,
