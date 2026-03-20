@@ -8,6 +8,7 @@ import '../features/audio_guide/screens/audio_guide_screen.dart';
 import '../features/geofencing/geofencing_controller.dart';
 import '../features/geofencing/screens/map_screen.dart';
 import '../features/landing/screens/landing_screen.dart';
+import '../features/map/presentation/map_screen.dart';
 import '../features/welcome/screens/welcome_screen.dart';
 
 class AppRouter {
@@ -62,10 +63,8 @@ class AppRouter {
       case orientation:
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => const _PlaceholderScreen(
-            title: 'Orientation',
-            icon: Icons.signpost_rounded,
-            message: 'Cet écran sera branché dans l’étape suivante.',
+          builder: (_) => OrientationMapScreen(
+            geofencingController: geofencingController,
           ),
         );
       case audioGuide:

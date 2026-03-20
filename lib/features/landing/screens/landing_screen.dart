@@ -7,6 +7,61 @@ import '../../../app/router.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../../geofencing/geofencing_controller.dart';
+import '../widgets/category_card.dart';
+
+class _CategoryData {
+  final String title;
+  final String subtitle;
+  final String count;
+  final Color accentColor;
+  final IconData icon;
+
+  const _CategoryData({
+    required this.title,
+    required this.subtitle,
+    required this.count,
+    required this.accentColor,
+    required this.icon,
+  });
+}
+
+const _categories = <_CategoryData>[
+  _CategoryData(
+    title: 'Offres thématiques',
+    subtitle: 'Idées & inspirations',
+    count: '12 offres',
+    accentColor: JorappColors.teal,
+    icon: Icons.grid_view_rounded,
+  ),
+  _CategoryData(
+    title: 'Visites & itinéraires',
+    subtitle: 'Sentiers & parcours',
+    count: '8 itinéraires',
+    accentColor: JorappColors.tealDark,
+    icon: Icons.route_rounded,
+  ),
+  _CategoryData(
+    title: 'Restaurants',
+    subtitle: 'Tables & terrasses',
+    count: '24 adresses',
+    accentColor: Color(0xFF2A7A6A),
+    icon: Icons.restaurant_rounded,
+  ),
+  _CategoryData(
+    title: 'Produits régionaux',
+    subtitle: 'Terroir & artisans',
+    count: '31 producteurs',
+    accentColor: Color(0xFF7B8330),
+    icon: Icons.eco_rounded,
+  ),
+  _CategoryData(
+    title: 'Activités sportives',
+    subtitle: 'Plein air & nature',
+    count: '15 activités',
+    accentColor: Color(0xFF476C32),
+    icon: Icons.directions_run_rounded,
+  ),
+];
 
 class LandingScreen extends StatefulWidget {
   final AuthService authService;
@@ -203,6 +258,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   leading: const Icon(
                     Icons.biotech_rounded,
                     color: JorappColors.tealDark,
+                    size: 28,
                   ),
                   title: const Text(
                     'Science participative',
@@ -215,8 +271,9 @@ class _LandingScreenState extends State<LandingScreen> {
                 ),
                 ListTile(
                   leading: const Icon(
-                    Icons.headset_mic_rounded,
+                    Icons.headset_rounded,
                     color: JorappColors.tealDark,
+                    size: 28,
                   ),
                   title: const Text(
                     'Balade audio',
@@ -234,6 +291,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   leading: const Icon(
                     Icons.explore_rounded,
                     color: JorappColors.tealDark,
+                    size: 28,
                   ),
                   title: const Text(
                     'Découvertes',
@@ -248,6 +306,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   leading: const Icon(
                     Icons.signpost_rounded,
                     color: JorappColors.tealDark,
+                    size: 28,
                   ),
                   title: const Text(
                     'Orientation',
@@ -308,10 +367,27 @@ class _LandingScreenState extends State<LandingScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Center(
-          child: Image.asset(
-            'assets/branding/jorapp_logo.png',
-            width: 120,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _categories.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, i) => CategoryCard(
+                    title: _categories[i].title,
+                    subtitle: _categories[i].subtitle,
+                    count: _categories[i].count,
+                    accentColor: _categories[i].accentColor,
+                    icon: _categories[i].icon,
+                    onTap: () {},
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
