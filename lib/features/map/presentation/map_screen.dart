@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../geofencing/geofencing_controller.dart';
 import '../../geofencing/models/location_sample.dart';
+import '../../geofencing/services/geojson_service.dart';
 import 'widgets/layer_toggle_card.dart';
 import 'widgets/user_location_marker.dart';
 
@@ -28,22 +31,33 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
   static const _border = Color(0xFFE0DDD5);
   static const _text = Color(0xFF1C1C1C);
 
-  // Slightly shifted north so the park remains visually centered
-  // once the bottom sheet is open.
-  static const _initialCenter = LatLng(46.623, 6.703);
-  static const _initialZoom = 13.5;
+  static const _parkCenter = LatLng(46.578559, 6.680231);
+  static const _initialZoom = 13.2;
 
+  final MapController _mapController = MapController();
+  final GlobalKey _bottomSheetKey = GlobalKey();
   late final AnimationController _gpsBlinkController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1800),
   )..repeat(reverse: true);
   bool _isSheetExpanded = true;
   bool _isZoneAlertEnabled = true;
+  bool _showPedestre = true;
+  bool _showCycliste = true;
+  bool _showCavalier = false;
+  double _lastBodyHeight = 0;
+  List<PathFeature> _pathFeatures = const [];
+  List<List<LatLng>> _protectedAreas = const [];
 
   @override
   void initState() {
     super.initState();
     widget.geofencingController.addListener(_onGeoChanged);
+    unawaited(_loadPathFeatures());
+    unawaited(_loadProtectedAreas());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _recenterMapToPark();
+    });
   }
 
   @override
@@ -63,6 +77,7 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
     setState(() {
       _isSheetExpanded = value;
     });
+    _scheduleRecenterAfterSheetAnimation();
   }
 
   void _setZoneAlertEnabled(bool value) {
@@ -72,10 +87,101 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
     // TODO: activer/désactiver géofence
   }
 
+  void _scheduleRecenterAfterSheetAnimation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _recenterMapToPark();
+    });
+    Future<void>.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted) return;
+      _recenterMapToPark();
+    });
+  }
+
+  void _recenterMapToPark() {
+    if (_lastBodyHeight <= 0) return;
+
+    final renderObject = _bottomSheetKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return;
+
+    final sheetHeight = renderObject.size.height;
+    final verticalOffset = -(sheetHeight / 2);
+
+    _mapController.move(
+      _parkCenter,
+      _mapController.camera.zoom == 0 ? _initialZoom : _mapController.camera.zoom,
+      offset: Offset(0, verticalOffset),
+      id: 'park-center',
+    );
+  }
+
+  Future<void> _loadPathFeatures() async {
+    try {
+      final pathFeatures = await GeoJsonService.loadPathFeatures(
+        GeofencingController.pathsAsset,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pathFeatures = pathFeatures;
+      });
+    } catch (_) {
+      // TODO: remonter l'erreur de chargement des chemins orientation
+    }
+  }
+
+  Future<void> _loadProtectedAreas() async {
+    try {
+      final polygons = await GeoJsonService.loadPolygons(
+        GeofencingController.protectedAreaAsset,
+      );
+      if (!mounted) return;
+      setState(() {
+        _protectedAreas = polygons;
+      });
+    } catch (_) {
+      // TODO: remonter l'erreur de chargement de la zone centrale
+    }
+  }
+
+  List<List<LatLng>> _pathsForPedestre() {
+    return _pathFeatures
+        .where(
+          (feature) =>
+              feature.containsKeyword('pietons') ||
+              feature.containsKeyword('multiusages'),
+        )
+        .map((feature) => feature.points)
+        .toList();
+  }
+
+  List<List<LatLng>> _pathsForCycliste() {
+    return _pathFeatures
+        .where(
+          (feature) =>
+              feature.containsKeyword('vtt') ||
+              feature.containsKeyword('multiusages'),
+        )
+        .map((feature) => feature.points)
+        .toList();
+  }
+
+  List<List<LatLng>> _pathsForCavalier() {
+    return _pathFeatures
+        .where(
+          (feature) =>
+              feature.containsKeyword('equestres') ||
+              feature.containsKeyword('multiusages'),
+        )
+        .map((feature) => feature.points)
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final latestSample = widget.geofencingController.latestSample;
     final userPosition = _sampleToLatLng(latestSample);
+    final pedestrePaths = _showPedestre ? _pathsForPedestre() : const <List<LatLng>>[];
+    final cyclistePaths = _showCycliste ? _pathsForCycliste() : const <List<LatLng>>[];
+    final cavalierPaths = _showCavalier ? _pathsForCavalier() : const <List<LatLng>>[];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -141,70 +247,130 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
           child: Container(height: 0.5, color: _border),
         ),
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: _initialCenter,
-                initialZoom: _initialZoom,
-                interactionOptions: InteractionOptions(
-                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          _lastBodyHeight = constraints.maxHeight;
+
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: const MapOptions(
+                    initialCenter: _parkCenter,
+                    initialZoom: _initialZoom,
+                    interactionOptions: InteractionOptions(
+                      flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.jorat_geofence',
+                    ),
+                    if (pedestrePaths.isNotEmpty)
+                      PolylineLayer(
+                        polylines: pedestrePaths
+                            .map(
+                              (line) => Polyline(
+                                points: line,
+                                color: const Color(0xFF2196F3),
+                                strokeWidth: 3.2,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    if (cyclistePaths.isNotEmpty)
+                      PolylineLayer(
+                        polylines: cyclistePaths
+                            .map(
+                              (line) => Polyline(
+                                points: line,
+                                color: const Color(0xFFF59E0B),
+                                strokeWidth: 3.2,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    if (cavalierPaths.isNotEmpty)
+                      PolylineLayer(
+                        polylines: cavalierPaths
+                            .map(
+                              (line) => Polyline(
+                                points: line,
+                                color: const Color(0xFF9C6FE4),
+                                strokeWidth: 3.2,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    if (_isZoneAlertEnabled && _protectedAreas.isNotEmpty)
+                      PolygonLayer(
+                        polygons: _protectedAreas
+                            .map(
+                              (polygon) => Polygon(
+                                points: polygon,
+                                borderColor: JorappColors.tealDark,
+                                borderStrokeWidth: 2,
+                                color: JorappColors.lime.withOpacity(0.30),
+                                isFilled: true,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    if (userPosition != null)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            width: 72,
+                            height: 72,
+                            point: userPosition,
+                            child: const UserLocationMarker(color: _primary),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.jorat_geofence',
+              Positioned(
+                top: 12,
+                right: 12,
+                child: _GpsBadge(animation: _gpsBlinkController),
+              ),
+              Positioned(
+                left: 12,
+                bottom: _isSheetExpanded ? 278 : 116,
+                child: const _ScaleBar(),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _BottomSheet(
+                  key: _bottomSheetKey,
+                  isExpanded: _isSheetExpanded,
+                  onExpandedChanged: _setSheetExpanded,
+                  onPedestreToggle: (value) {
+                    setState(() {
+                      _showPedestre = value;
+                    });
+                  },
+                  onCyclisteToggle: (value) {
+                    setState(() {
+                      _showCycliste = value;
+                    });
+                  },
+                  onCavalierToggle: (value) {
+                    setState(() {
+                      _showCavalier = value;
+                    });
+                  },
+                  isZoneAlertEnabled: _isZoneAlertEnabled,
+                  onGeofenceToggle: _setZoneAlertEnabled,
                 ),
-                // TODO: PolylineLayer sentiers pédestres (couleur #2196F3)
-                // TODO: PolylineLayer sentiers cyclistes (couleur #F59E0B)
-                // TODO: PolylineLayer sentiers cavaliers (couleur #9C6FE4)
-                // TODO: PolygonLayer périmètre du parc
-                // (stroke #3D6B35, fill opacity 0.06)
-                if (userPosition != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        width: 72,
-                        height: 72,
-                        point: userPosition,
-                        child: const UserLocationMarker(color: _primary),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 12,
-            right: 12,
-            child: _GpsBadge(animation: _gpsBlinkController),
-          ),
-          Positioned(
-            left: 12,
-            bottom: _isSheetExpanded ? 278 : 116,
-            child: const _ScaleBar(),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: _BottomSheet(
-              isExpanded: _isSheetExpanded,
-              onExpandedChanged: _setSheetExpanded,
-              onPedestreToggle: (value) {
-                // TODO: activer/désactiver la couche correspondante sur la carte
-              },
-              onCyclisteToggle: (value) {
-                // TODO: activer/désactiver la couche correspondante sur la carte
-              },
-              onCavalierToggle: (value) {
-                // TODO: activer/désactiver la couche correspondante sur la carte
-              },
-              isZoneAlertEnabled: _isZoneAlertEnabled,
-              onGeofenceToggle: _setZoneAlertEnabled,
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -299,6 +465,7 @@ class _BottomSheet extends StatelessWidget {
   final ValueChanged<bool> onGeofenceToggle;
 
   const _BottomSheet({
+    super.key,
     required this.isExpanded,
     required this.onExpandedChanged,
     required this.onPedestreToggle,

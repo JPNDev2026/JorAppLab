@@ -3,6 +3,20 @@ import 'dart:developer' as developer;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:latlong2/latlong.dart';
 
+class PathFeature {
+  final List<LatLng> points;
+  final String layerName;
+
+  const PathFeature({
+    required this.points,
+    required this.layerName,
+  });
+
+  bool containsKeyword(String keyword) {
+    return layerName.toLowerCase().contains(keyword.toLowerCase());
+  }
+}
+
 class GeoJsonService {
   static Future<Map<String, dynamic>> _loadJsonMap(String assetPath) async {
     final byteData = await rootBundle.load(assetPath);
@@ -21,11 +35,11 @@ class GeoJsonService {
   /// =========================
   /// LIGNES (chemins)
   /// =========================
-  static Future<List<List<LatLng>>> loadPaths(String assetPath) async {
-    developer.log('[GeoJsonService] loadPaths start: $assetPath');
+  static Future<List<PathFeature>> loadPathFeatures(String assetPath) async {
+    developer.log('[GeoJsonService] loadPathFeatures start: $assetPath');
     final jsonData = await _loadJsonMap(assetPath);
 
-    final List<List<LatLng>> paths = [];
+    final List<PathFeature> pathFeatures = [];
 
     final features = jsonData['features'];
     if (features is! List) {
@@ -34,20 +48,42 @@ class GeoJsonService {
 
     for (final feature in features) {
       if (feature is! Map) continue;
+      final properties = feature['properties'];
       final geometry = feature['geometry'];
       if (geometry is! Map) continue;
 
+      final layerName = properties is Map
+          ? (properties['Layer']?.toString() ?? '')
+          : '';
       final type = geometry['type'];
       final coords = geometry['coordinates'];
 
       if (type == 'LineString') {
-        paths.add(_parseLine(coords));
+        final points = _parseLine(coords);
+        if (points.isNotEmpty) {
+          pathFeatures.add(PathFeature(points: points, layerName: layerName));
+        }
       } else if (type == 'MultiLineString') {
         for (final line in coords) {
-          paths.add(_parseLine(line));
+          final points = _parseLine(line);
+          if (points.isNotEmpty) {
+            pathFeatures.add(PathFeature(points: points, layerName: layerName));
+          }
         }
       }
     }
+
+    developer.log(
+      '[GeoJsonService] loadPathFeatures done: ${pathFeatures.length} lignes '
+      'depuis $assetPath',
+    );
+    return pathFeatures;
+  }
+
+  static Future<List<List<LatLng>>> loadPaths(String assetPath) async {
+    developer.log('[GeoJsonService] loadPaths start: $assetPath');
+    final pathFeatures = await loadPathFeatures(assetPath);
+    final paths = pathFeatures.map((feature) => feature.points).toList();
 
     developer.log(
       '[GeoJsonService] loadPaths done: ${paths.length} lignes depuis $assetPath',
