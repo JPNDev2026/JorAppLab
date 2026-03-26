@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../theme/jorapp_theme.dart';
@@ -24,7 +25,7 @@ class OrientationMapScreen extends StatefulWidget {
 }
 
 class _OrientationMapScreenState extends State<OrientationMapScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _primary = Color(0xFF3D6B35);
   static const _surface = Color(0xFFF5F3EE);
   static const _surfaceAlt = Color(0xFFE8E5DC);
@@ -48,11 +49,18 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
   double _lastBodyHeight = 0;
   List<PathFeature> _pathFeatures = const [];
   List<List<LatLng>> _protectedAreas = const [];
+  StreamSubscription<String>? _errorSubscription;
+  bool _isLocationPromptVisible = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_ensureTrackingActive());
     widget.geofencingController.addListener(_onGeoChanged);
+    _errorSubscription = widget.geofencingController.errors.listen((error) {
+      _handleError(error);
+    });
     unawaited(_loadPathFeatures());
     unawaited(_loadProtectedAreas());
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -62,9 +70,18 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.geofencingController.removeListener(_onGeoChanged);
+    _errorSubscription?.cancel();
     _gpsBlinkController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_ensureTrackingActive());
+    }
   }
 
   void _onGeoChanged() {
@@ -85,6 +102,53 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
       _isZoneAlertEnabled = value;
     });
     // TODO: activer/désactiver géofence
+  }
+
+  Future<void> _ensureTrackingActive() async {
+    await widget.geofencingController.trackingController.initialize(
+      autoStart: true,
+    );
+    if (!widget.geofencingController.isCollecting) {
+      await widget.geofencingController.trackingController.setCollecting(true);
+    }
+  }
+
+  void _handleError(String error) {
+    if (!mounted) return;
+    if (_isLocationServiceDisabledError(error)) {
+      _showLocationSettingsPrompt(error);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
+  }
+
+  bool _isLocationServiceDisabledError(String error) {
+    return error.toLowerCase().contains('service de localisation desactive');
+  }
+
+  void _showLocationSettingsPrompt(String error) {
+    if (_isLocationPromptVisible) return;
+    _isLocationPromptVisible = true;
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content: Text(error),
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Activer le GPS',
+              onPressed: () async {
+                await Geolocator.openLocationSettings();
+              },
+            ),
+          ),
+        )
+        .closed
+        .whenComplete(() {
+          _isLocationPromptVisible = false;
+        });
   }
 
   void _scheduleRecenterAfterSheetAnimation() {

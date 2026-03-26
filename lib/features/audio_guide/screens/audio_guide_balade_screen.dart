@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../theme/jorapp_theme.dart';
@@ -26,19 +27,31 @@ class AudioGuideBaladeScreen extends StatefulWidget {
   State<AudioGuideBaladeScreen> createState() => _AudioGuideBaladeScreenState();
 }
 
-class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
+class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
+    with WidgetsBindingObserver {
   static const Distance _distance = Distance();
   final AudioGuidePlayerService _playerService = AudioGuidePlayerService();
   DateTime? _lastEvaluatedSampleAt;
   bool _isCheckingZone = false;
   bool _autoPlaySuppressedUntilNextSample = false;
   Set<String> _insideZoneIds = <String>{};
+  StreamSubscription<String>? _errorSubscription;
+  bool _isLocationPromptVisible = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(
+      widget.geofencingController.trackingController.initialize(
+        autoStart: true,
+      ),
+    );
     widget.geofencingController.addListener(_onControllerChanged);
     _playerService.addListener(_onPlayerChanged);
+    _errorSubscription = widget.geofencingController.errors.listen((error) {
+      _handleError(error);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_checkZonesForPlayback());
     });
@@ -46,10 +59,19 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.geofencingController.removeListener(_onControllerChanged);
     _playerService.removeListener(_onPlayerChanged);
+    _errorSubscription?.cancel();
     _playerService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_ensureTrackingActive());
+    }
   }
 
   void _onControllerChanged() {
@@ -64,6 +86,53 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen> {
     if (!_playerService.hasActiveTrack) {
       unawaited(_checkZonesForPlayback());
     }
+  }
+
+  Future<void> _ensureTrackingActive() async {
+    await widget.geofencingController.trackingController.initialize(
+      autoStart: true,
+    );
+    if (!widget.geofencingController.isCollecting) {
+      await widget.geofencingController.trackingController.setCollecting(true);
+    }
+  }
+
+  void _handleError(String error) {
+    if (!mounted) return;
+    if (_isLocationServiceDisabledError(error)) {
+      _showLocationSettingsPrompt(error);
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
+  }
+
+  bool _isLocationServiceDisabledError(String error) {
+    return error.toLowerCase().contains('service de localisation desactive');
+  }
+
+  void _showLocationSettingsPrompt(String error) {
+    if (_isLocationPromptVisible) return;
+    _isLocationPromptVisible = true;
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content: Text(error),
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Activer le GPS',
+              onPressed: () async {
+                await Geolocator.openLocationSettings();
+              },
+            ),
+          ),
+        )
+        .closed
+        .whenComplete(() {
+          _isLocationPromptVisible = false;
+        });
   }
 
   LatLng _initialCenter() {
