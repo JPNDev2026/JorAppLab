@@ -445,7 +445,7 @@ class _AudioGuideStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final playbackText = currentTitle == null
-        ? 'Touchez un point audio sur la carte pour lancer la lecture.'
+        ? 'Rendez-vous dans une zone audio pour lancer la lecture.'
         : isPlaying
             ? 'Lecture en cours: $currentTitle'
             : isPaused

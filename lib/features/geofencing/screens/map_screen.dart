@@ -27,10 +27,17 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
+class _MapScreenState extends State<MapScreen>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
   LocationSample? _selectedSample;
-  bool _isLocationPromptVisible = false;
+  bool _isLocationServiceEnabled = false;
+  LocationPermission _locationPermission = LocationPermission.unableToDetermine;
+  late final AnimationController _gpsBlinkController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
 
   @override
   void initState() {
@@ -39,15 +46,19 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     developer.log(
       '[MapScreen] initState loader=${GeofencingController.loaderVersion}',
     );
-    unawaited(
-      widget.geofencingController.trackingController.initialize(
-        autoStart: true,
-      ),
-    );
+    unawaited(_prepareLocationTracking());
     unawaited(widget.geofencingController.bootstrapLayers());
     widget.geofencingController.addListener(_onControllerChanged);
     _errorSubscription = widget.geofencingController.errors.listen((error) {
       _handleError(error);
+    });
+    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((
+      status,
+    ) {
+      if (!mounted) return;
+      setState(() {
+        _isLocationServiceEnabled = status == ServiceStatus.enabled;
+      });
     });
   }
 
@@ -56,19 +67,48 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     widget.geofencingController.removeListener(_onControllerChanged);
     _errorSubscription?.cancel();
+    _serviceStatusSubscription?.cancel();
+    _gpsBlinkController.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_ensureTrackingActive());
+      unawaited(_prepareLocationTracking());
     }
   }
 
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  Future<void> _prepareLocationTracking() async {
+    await _refreshLocationAccessState();
+    await _requestLocationPermissionIfNeeded();
+    await _ensureTrackingActive();
+  }
+
+  Future<void> _refreshLocationAccessState() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    final permission = await Geolocator.checkPermission();
+    if (!mounted) return;
+    setState(() {
+      _isLocationServiceEnabled = enabled;
+      _locationPermission = permission;
+    });
+  }
+
+  Future<void> _requestLocationPermissionIfNeeded() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (!mounted) return;
+    setState(() {
+      _locationPermission = permission;
+    });
   }
 
   Future<void> _ensureTrackingActive() async {
@@ -82,8 +122,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void _handleError(String error) {
     if (!mounted) return;
-    if (_isLocationServiceDisabledError(error)) {
-      _showLocationSettingsPrompt(error);
+    if (_isLocationAccessMessage(error)) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -91,31 +131,31 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     );
   }
 
-  bool _isLocationServiceDisabledError(String error) {
-    return error.toLowerCase().contains('service de localisation desactive');
+  bool _isLocationAccessMessage(String error) {
+    final normalized = error.toLowerCase();
+    return normalized.contains('service de localisation desactive') ||
+        normalized.contains('permission de localisation') ||
+        normalized.contains('permission en arriere-plan');
   }
 
-  void _showLocationSettingsPrompt(String error) {
-    if (_isLocationPromptVisible) return;
-    _isLocationPromptVisible = true;
+  bool get _hasLocationPermission =>
+      _locationPermission == LocationPermission.always ||
+      _locationPermission == LocationPermission.whileInUse;
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-          SnackBar(
-            content: Text(error),
-            duration: const Duration(seconds: 8),
-            action: SnackBarAction(
-              label: 'Activer le GPS',
-              onPressed: () async {
-                await Geolocator.openLocationSettings();
-              },
-            ),
-          ),
-        )
-        .closed
-        .whenComplete(() {
-          _isLocationPromptVisible = false;
-        });
+  bool get _showLocationBanner =>
+      !_isLocationServiceEnabled || !_hasLocationPermission;
+
+  Future<void> _handleLocationBannerPressed() async {
+    if (!_hasLocationPermission) {
+      if (_locationPermission == LocationPermission.deniedForever) {
+        await Geolocator.openAppSettings();
+      } else {
+        await _requestLocationPermissionIfNeeded();
+      }
+      return;
+    }
+
+    await Geolocator.openLocationSettings();
   }
 
   Future<void> _openMeasurements() async {
@@ -178,6 +218,11 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       'polygons=${widget.geofencingController.protectedAreas.length}',
     );
 
+    final isGpsActive =
+        _isLocationServiceEnabled &&
+        _hasLocationPermission &&
+        widget.geofencingController.isCollecting;
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 76,
@@ -230,23 +275,53 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           const SizedBox(width: 12),
         ],
       ),
-      body: MapWidget(
-        paths: widget.geofencingController.paths,
-        protectedAreas: widget.geofencingController.protectedAreas,
-        recordedPoints: widget.geofencingController.samples
-            .map((sample) => LatLng(sample.latitude, sample.longitude))
-            .toList(),
-        latestPoint: widget.geofencingController.latestSample == null
-            ? null
-            : LatLng(
-                widget.geofencingController.latestSample!.latitude,
-                widget.geofencingController.latestSample!.longitude,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: MapWidget(
+              paths: widget.geofencingController.paths,
+              protectedAreas: widget.geofencingController.protectedAreas,
+              recordedPoints: widget.geofencingController.samples
+                  .map((sample) => LatLng(sample.latitude, sample.longitude))
+                  .toList(),
+              latestPoint: widget.geofencingController.latestSample == null
+                  ? null
+                  : LatLng(
+                      widget.geofencingController.latestSample!.latitude,
+                      widget.geofencingController.latestSample!.longitude,
+                    ),
+              selectedPoint: _selectedSample == null
+                  ? null
+                  : LatLng(_selectedSample!.latitude, _selectedSample!.longitude),
+              showPaths: widget.geofencingController.showPaths,
+              showProtectedAreas: widget.geofencingController.showProtectedAreas,
+            ),
+          ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: _GpsStatusBadge(
+              animation: _gpsBlinkController,
+              isActive: isGpsActive,
+            ),
+          ),
+          if (_showLocationBanner)
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 120,
+              child: _LocationSettingsBanner(
+                title: _hasLocationPermission
+                    ? 'Activez le GPS pour afficher votre position'
+                    : 'Autorisez la localisation pour afficher votre position',
+                actionLabel: _hasLocationPermission ? 'Activer' : 'Autoriser',
+                icon: _hasLocationPermission
+                    ? Icons.gps_off_rounded
+                    : Icons.location_disabled_rounded,
+                onPressed: _handleLocationBannerPressed,
               ),
-        selectedPoint: _selectedSample == null
-            ? null
-            : LatLng(_selectedSample!.latitude, _selectedSample!.longitude),
-        showPaths: widget.geofencingController.showPaths,
-        showProtectedAreas: widget.geofencingController.showProtectedAreas,
+            ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(12),
@@ -287,6 +362,135 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GpsStatusBadge extends StatelessWidget {
+  final Animation<double> animation;
+  final bool isActive;
+
+  const _GpsStatusBadge({
+    required this.animation,
+    required this.isActive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive
+              ? JorappColors.tealDark.withOpacity(0.28)
+              : JorappColors.ink.withOpacity(0.12),
+          width: 0.5,
+        ),
+      ),
+      child: AnimatedBuilder(
+        animation: animation,
+        builder: (context, _) {
+          final dotColor = isActive
+              ? JorappColors.lime.withOpacity(0.45 + (animation.value * 0.55))
+              : Colors.grey.shade400;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: dotColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isActive ? 'GPS actif' : 'GPS inactif',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isActive ? JorappColors.tealDark : Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LocationSettingsBanner extends StatelessWidget {
+  final String title;
+  final String actionLabel;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _LocationSettingsBanner({
+    required this.title,
+    required this.actionLabel,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: JorappColors.tealDark.withOpacity(0.14),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: JorappColors.ink.withOpacity(0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: JorappColors.tealDark,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: JorappColors.ink,
+                height: 1.3,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton(
+            onPressed: onPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor: JorappColors.teal,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              actionLabel,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../../geofencing/geofencing_controller.dart';
+import 'landing_section_screen.dart';
 import '../widgets/category_card.dart';
 
 class _CategoryData {
@@ -111,6 +112,19 @@ class _LandingScreenState extends State<LandingScreen> {
 
   void _openMenu() {
     _scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  Future<void> _openCategory(_CategoryData category) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LandingSectionScreen(
+          title: category.title,
+          subtitle: category.subtitle,
+          icon: category.icon,
+          accentColor: category.accentColor,
+        ),
+      ),
+    );
   }
 
   Future<void> _pushNamedFromDrawer(
@@ -383,7 +397,7 @@ class _LandingScreenState extends State<LandingScreen> {
                     count: _categories[i].count,
                     accentColor: _categories[i].accentColor,
                     icon: _categories[i].icon,
-                    onTap: () {},
+                    onTap: () => _openCategory(_categories[i]),
                   ),
                 ),
               ),
