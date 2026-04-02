@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 import '../../app/theme.dart';
+import '../../core/constants.dart';
+import '../auth/auth_service.dart';
+import '../auth/screens/forgot_password_screen.dart';
+import '../auth/screens/login_screen.dart';
+import '../auth/screens/register_screen.dart';
 import '../../theme/jorapp_theme.dart';
 
 class ComingSoonApp extends StatelessWidget {
@@ -8,16 +14,93 @@ class ComingSoonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authService = AuthService(
+      pocketBase: PocketBase(AppConstants.pbUrl),
+    );
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const _WebLandingScreen(),
+      initialRoute: '/',
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => _WebLandingScreen(authService: authService),
+            );
+          case '/map':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const _WebFeaturePlaceholderScreen(
+                title: 'Science participative',
+                icon: Icons.biotech_rounded,
+              ),
+            );
+          case '/audio-guide':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const _WebFeaturePlaceholderScreen(
+                title: 'Balade audio',
+                icon: Icons.headset_rounded,
+              ),
+            );
+          case '/partenaires':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const _WebFeaturePlaceholderScreen(
+                title: 'Découvertes',
+                icon: Icons.explore_rounded,
+              ),
+            );
+          case '/orientation':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const _WebFeaturePlaceholderScreen(
+                title: 'Orientation',
+                icon: Icons.signpost_rounded,
+              ),
+            );
+          case '/login':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => LoginScreen(
+                authService: authService,
+                redirectRoute: settings.arguments as String?,
+              ),
+            );
+          case '/register':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => RegisterScreen(
+                authService: authService,
+                redirectRoute: settings.arguments as String?,
+              ),
+            );
+          case '/forgot-password':
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => ForgotPasswordScreen(
+                authService: authService,
+              ),
+            );
+          default:
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => _WebLandingScreen(authService: authService),
+            );
+        }
+      },
     );
   }
 }
 
 class _WebLandingScreen extends StatefulWidget {
-  const _WebLandingScreen();
+  final AuthService authService;
+
+  const _WebLandingScreen({
+    required this.authService,
+  });
 
   @override
   State<_WebLandingScreen> createState() => _WebLandingScreenState();
@@ -65,6 +148,26 @@ class _WebLandingScreenState extends State<_WebLandingScreen>
 
   void _openMenu() {
     _scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  String _displayName() {
+    final user = widget.authService.currentUser;
+    if (user == null) return 'Visiteur';
+
+    final name = user.getStringValue('name').trim();
+    if (name.isNotEmpty) return name;
+
+    final email = user.getStringValue('email').trim();
+    if (email.isNotEmpty) return email;
+
+    final rawEmail = user.data['email']?.toString().trim() ?? '';
+    return rawEmail.isNotEmpty ? rawEmail : 'Visiteur';
+  }
+
+  String _initialForAvatar() {
+    final label = _displayName().trim();
+    if (label.isEmpty || label == 'Visiteur') return 'V';
+    return label.substring(0, 1).toUpperCase();
   }
 
   Future<void> _openPlaceholder(
@@ -133,143 +236,194 @@ class _WebLandingScreenState extends State<_WebLandingScreen>
       ),
       endDrawer: Drawer(
         width: 280,
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [JorappColors.teal, JorappColors.tealDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(
-                    radius: 29,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 28,
+        child: ListenableBuilder(
+          listenable: widget.authService,
+          builder: (context, _) {
+            final isLoggedIn = widget.authService.isLoggedIn;
+            final displayName = _displayName();
+
+            return Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [JorappColors.teal, JorappColors.tealDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Visiteur',
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 29,
+                        backgroundColor: isLoggedIn
+                            ? JorappColors.lime
+                            : Colors.white.withOpacity(0.2),
+                        child: isLoggedIn
+                            ? Text(
+                                _initialForAvatar(),
+                                style: const TextStyle(
+                                  color: JorappColors.tealDark,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        displayName,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight:
+                              isLoggedIn ? FontWeight.w700 : FontWeight.w400,
+                          fontStyle:
+                              isLoggedIn ? FontStyle.normal : FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.biotech_rounded,
+                    color: JorappColors.tealDark,
+                    size: 28,
+                  ),
+                  title: const Text(
+                    'Science participative',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      fontStyle: FontStyle.italic,
+                      color: JorappColors.ink,
+                      fontSize: 15,
                     ),
                   ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.biotech_rounded,
-                color: JorappColors.tealDark,
-                size: 28,
-              ),
-              title: const Text(
-                'Science participative',
-                style: TextStyle(
-                  color: JorappColors.ink,
-                  fontSize: 15,
-                ),
-              ),
-              onTap: () => _openPlaceholder(
-                context,
-                title: 'Science participative',
-                icon: Icons.biotech_rounded,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.headset_rounded,
-                color: JorappColors.tealDark,
-                size: 28,
-              ),
-              title: const Text(
-                'Balade audio',
-                style: TextStyle(
-                  color: JorappColors.ink,
-                  fontSize: 15,
-                ),
-              ),
-              onTap: () => _openPlaceholder(
-                context,
-                title: 'Balade audio',
-                icon: Icons.headset_rounded,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.explore_rounded,
-                color: JorappColors.tealDark,
-                size: 28,
-              ),
-              title: const Text(
-                'Découvertes',
-                style: TextStyle(
-                  color: JorappColors.ink,
-                  fontSize: 15,
-                ),
-              ),
-              onTap: () => _openPlaceholder(
-                context,
-                title: 'Découvertes',
-                icon: Icons.explore_rounded,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.signpost_rounded,
-                color: JorappColors.tealDark,
-                size: 28,
-              ),
-              title: const Text(
-                'Orientation',
-                style: TextStyle(
-                  color: JorappColors.ink,
-                  fontSize: 15,
-                ),
-              ),
-              onTap: () => _openPlaceholder(
-                context,
-                title: 'Orientation',
-                icon: Icons.signpost_rounded,
-              ),
-            ),
-            const Spacer(),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _openPlaceholder(
+                  onTap: () => _openPlaceholder(
                     context,
-                    title: 'Connexion',
-                    icon: Icons.login_rounded,
-                  ),
-                  icon: const Icon(Icons.login_rounded),
-                  label: const Text('Se connecter'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: JorappColors.teal,
-                    foregroundColor: Colors.white,
+                    title: 'Science participative',
+                    icon: Icons.biotech_rounded,
                   ),
                 ),
-              ),
-            ),
-          ],
+                ListTile(
+                  leading: const Icon(
+                    Icons.headset_rounded,
+                    color: JorappColors.tealDark,
+                    size: 28,
+                  ),
+                  title: const Text(
+                    'Balade audio',
+                    style: TextStyle(
+                      color: JorappColors.ink,
+                      fontSize: 15,
+                    ),
+                  ),
+                  onTap: () {
+                    if (isLoggedIn) {
+                      _openPlaceholder(
+                        context,
+                        title: 'Balade audio',
+                        icon: Icons.headset_rounded,
+                      );
+                    } else {
+                      Navigator.of(context).pop();
+                      Navigator.pushNamed(
+                        context,
+                        '/login',
+                        arguments: '/audio-guide',
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.explore_rounded,
+                    color: JorappColors.tealDark,
+                    size: 28,
+                  ),
+                  title: const Text(
+                    'Découvertes',
+                    style: TextStyle(
+                      color: JorappColors.ink,
+                      fontSize: 15,
+                    ),
+                  ),
+                  onTap: () => _openPlaceholder(
+                    context,
+                    title: 'Découvertes',
+                    icon: Icons.explore_rounded,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.signpost_rounded,
+                    color: JorappColors.tealDark,
+                    size: 28,
+                  ),
+                  title: const Text(
+                    'Orientation',
+                    style: TextStyle(
+                      color: JorappColors.ink,
+                      fontSize: 15,
+                    ),
+                  ),
+                  onTap: () => _openPlaceholder(
+                    context,
+                    title: 'Orientation',
+                    icon: Icons.signpost_rounded,
+                  ),
+                ),
+                const Spacer(),
+                const Divider(height: 1),
+                if (!isLoggedIn)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushNamed(context, '/login');
+                        },
+                        icon: const Icon(Icons.login_rounded),
+                        label: const Text('Se connecter'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: JorappColors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          widget.authService.logout();
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Se déconnecter'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: JorappColors.tealDark,
+                          side: const BorderSide(color: JorappColors.teal),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
       body: Container(
@@ -337,6 +491,7 @@ class _WebFeaturePlaceholderScreen extends StatelessWidget {
   final IconData icon;
 
   const _WebFeaturePlaceholderScreen({
+    super.key,
     required this.title,
     required this.icon,
   });

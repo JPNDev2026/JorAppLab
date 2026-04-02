@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pocketbase/pocketbase.dart';
 
+import '../../../app/router.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../auth_service.dart';
 
@@ -66,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
-        widget.redirectRoute ?? '/',
+        widget.redirectRoute ?? AppRouter.landing,
       );
     } on ClientException catch (e) {
       if (!mounted) return;

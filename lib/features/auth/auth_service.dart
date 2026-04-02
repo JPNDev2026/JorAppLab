@@ -6,11 +6,13 @@ import 'package:pocketbase/pocketbase.dart';
 import '../../core/services/pb_client.dart';
 
 class AuthService extends ChangeNotifier {
-  final PocketBase pb = PbClient.instance.pb;
+  final PocketBase pb;
   late final StreamSubscription<AuthStoreEvent> _authSubscription =
       pb.authStore.onChange.listen((_) {
         notifyListeners();
       });
+
+  AuthService({PocketBase? pocketBase}) : pb = pocketBase ?? PbClient.instance.pb;
 
   bool get isLoggedIn => pb.authStore.isValid;
   RecordModel? get currentUser => pb.authStore.record;
