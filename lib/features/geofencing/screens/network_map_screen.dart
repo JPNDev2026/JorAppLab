@@ -13,21 +13,21 @@ import '../widgets/layer_menu.dart';
 import '../widgets/map_widget.dart';
 import 'measurements_screen.dart';
 
-class MapScreen extends StatefulWidget {
+class NetworkMapScreen extends StatefulWidget {
   final AuthService authService;
   final GeofencingController geofencingController;
 
-  const MapScreen({
+  const NetworkMapScreen({
     super.key,
     required this.authService,
     required this.geofencingController,
   });
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  State<NetworkMapScreen> createState() => _NetworkMapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen>
+class _NetworkMapScreenState extends State<NetworkMapScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
@@ -44,7 +44,7 @@ class _MapScreenState extends State<MapScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     developer.log(
-      '[MapScreen] initState loader=${GeofencingController.loaderVersion}',
+      '[NetworkMapScreen] initState loader=${GeofencingController.loaderVersion}',
     );
     unawaited(_prepareLocationTracking());
     unawaited(widget.geofencingController.bootstrapLayers());
@@ -212,7 +212,7 @@ class _MapScreenState extends State<MapScreen>
   @override
   Widget build(BuildContext context) {
     developer.log(
-      '[MapScreen] build showPaths=${widget.geofencingController.showPaths} '
+      '[NetworkMapScreen] build showPaths=${widget.geofencingController.showPaths} '
       'showProtectedAreas=${widget.geofencingController.showProtectedAreas} '
       'paths=${widget.geofencingController.paths.length} '
       'polygons=${widget.geofencingController.protectedAreas.length}',
@@ -334,7 +334,7 @@ class _MapScreenState extends State<MapScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            border: Border.all(color: JorappColors.lime.withOpacity(0.7)),
+            border: Border.all(color: JorappColors.lime.withValues(alpha: 0.7)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -381,12 +381,12 @@ class _GpsStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
+        color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isActive
-              ? JorappColors.tealDark.withOpacity(0.28)
-              : JorappColors.ink.withOpacity(0.12),
+              ? JorappColors.tealDark.withValues(alpha: 0.28)
+              : JorappColors.ink.withValues(alpha: 0.12),
           width: 0.5,
         ),
       ),
@@ -394,7 +394,7 @@ class _GpsStatusBadge extends StatelessWidget {
         animation: animation,
         builder: (context, _) {
           final dotColor = isActive
-              ? JorappColors.lime.withOpacity(0.45 + (animation.value * 0.55))
+              ? JorappColors.lime.withValues(alpha: 0.45 + (animation.value * 0.55))
               : Colors.grey.shade400;
           return Row(
             mainAxisSize: MainAxisSize.min,
@@ -442,15 +442,15 @@ class _LocationSettingsBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: JorappColors.tealDark.withOpacity(0.14),
+          color: JorappColors.tealDark.withValues(alpha: 0.14),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: JorappColors.ink.withOpacity(0.08),
+            color: JorappColors.ink.withValues(alpha: 0.08),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),

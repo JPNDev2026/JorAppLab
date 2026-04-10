@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../features/auth/auth_service.dart';
@@ -6,10 +7,11 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
 import '../features/audio_guide/screens/audio_guide_screen.dart';
 import '../features/geofencing/geofencing_controller.dart';
-import '../features/geofencing/screens/map_screen.dart';
+import '../features/geofencing/screens/network_map_screen.dart';
 import '../features/landing/screens/landing_screen.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/welcome/screens/welcome_screen.dart';
+import 'screens/web_unsupported_screen.dart';
 
 class AppRouter {
   static const String welcome = '/welcome';
@@ -30,6 +32,15 @@ class AppRouter {
   }) {
     switch (settings.name) {
       case welcome:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LandingScreen(
+              authService: authService,
+              geofencingController: geofencingController,
+            ),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => const WelcomeScreen(),
@@ -44,23 +55,44 @@ class AppRouter {
         );
       case map:
       case home:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => MapScreen(
+          builder: (_) => NetworkMapScreen(
             authService: authService,
             geofencingController: geofencingController,
           ),
         );
       case partenaires:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LandingScreen(
+              authService: authService,
+              geofencingController: geofencingController,
+            ),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => const _PlaceholderScreen(
-            title: 'Découvertes',
+            title: "Découvertes",
             icon: Icons.explore_rounded,
-            message: 'Cet écran sera branché dans l’étape suivante.',
+            message: "Cet écran sera branché dans l’étape suivante.",
           ),
         );
       case orientation:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => OrientationMapScreen(
@@ -68,6 +100,21 @@ class AppRouter {
           ),
         );
       case audioGuide:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
+        if (!authService.isLoggedIn) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LoginScreen(
+              authService: authService,
+              redirectRoute: AppRouter.audioGuide,
+            ),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => AudioGuideScreen(
@@ -96,9 +143,15 @@ class AppRouter {
           builder: (_) => ForgotPasswordScreen(authService: authService),
         );
       default:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => MapScreen(
+          builder: (_) => NetworkMapScreen(
             authService: authService,
             geofencingController: geofencingController,
           ),

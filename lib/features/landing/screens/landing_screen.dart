@@ -3,7 +3,8 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 
-import '../../../app/router.dart';
+import '../../../app/widgets/jorapp_app_bar.dart';
+import '../../../app/widgets/jorapp_drawer.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../../geofencing/geofencing_controller.dart';
@@ -137,26 +138,6 @@ class _LandingScreenState extends State<LandingScreen> {
     await Navigator.pushNamed(context, routeName, arguments: arguments);
   }
 
-  String _displayName() {
-    final user = widget.authService.currentUser;
-    if (user == null) return 'Visiteur';
-
-    final name = user.getStringValue('name').trim();
-    if (name.isNotEmpty) return name;
-
-    final email = user.getStringValue('email').trim();
-    if (email.isNotEmpty) return email;
-
-    final rawEmail = user.data['email']?.toString().trim() ?? '';
-    return rawEmail.isNotEmpty ? rawEmail : 'Visiteur';
-  }
-
-  String _initialForAvatar() {
-    final label = _displayName().trim();
-    if (label.isEmpty || label == 'Visiteur') return 'V';
-    return label.substring(0, 1).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     developer.log(
@@ -167,211 +148,12 @@ class _LandingScreenState extends State<LandingScreen> {
     return Scaffold(
       key: _scaffoldKey,
       endDrawerEnableOpenDragGesture: false,
-      appBar: AppBar(
-        toolbarHeight: 76,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                'assets/branding/jorapp_logo.png',
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'JorAppLab',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  'Parc du Jorat',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            iconSize: 30,
-            padding: const EdgeInsets.all(10),
-            icon: const Icon(Icons.menu_rounded),
-            onPressed: _openMenu,
-          ),
-          const SizedBox(width: 12),
-        ],
+      appBar: JorappAppBar(
+        onMenuPressed: _openMenu,
       ),
-      endDrawer: Drawer(
-        width: 280,
-        child: ListenableBuilder(
-          listenable: widget.authService,
-          builder: (context, _) {
-            final isLoggedIn = widget.authService.isLoggedIn;
-            final displayName = _displayName();
-
-            return Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [JorappColors.teal, JorappColors.tealDark],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 29,
-                        backgroundColor: isLoggedIn
-                            ? JorappColors.lime
-                            : Colors.white.withOpacity(0.2),
-                        child: isLoggedIn
-                            ? Text(
-                                _initialForAvatar(),
-                                style: const TextStyle(
-                                  color: JorappColors.tealDark,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        displayName,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight:
-                              isLoggedIn ? FontWeight.w700 : FontWeight.w400,
-                          fontStyle:
-                              isLoggedIn ? FontStyle.normal : FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.biotech_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Science participative',
-                    style: TextStyle(
-                      color: JorappColors.ink,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () => _pushNamedFromDrawer(AppRouter.map),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.headset_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Balade audio',
-                    style: TextStyle(
-                      color: JorappColors.ink,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () => _pushNamedFromDrawer(
-                    isLoggedIn ? AppRouter.audioGuide : AppRouter.login,
-                    arguments: isLoggedIn ? null : AppRouter.audioGuide,
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.explore_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Découvertes',
-                    style: TextStyle(
-                      color: JorappColors.ink,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () => _pushNamedFromDrawer(AppRouter.partenaires),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.signpost_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Orientation',
-                    style: TextStyle(
-                      color: JorappColors.ink,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () => _pushNamedFromDrawer(AppRouter.orientation),
-                ),
-                const Spacer(),
-                const Divider(height: 1),
-                if (!isLoggedIn)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _pushNamedFromDrawer(AppRouter.login),
-                        icon: const Icon(Icons.login_rounded),
-                        label: const Text('Se connecter'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: JorappColors.teal,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          widget.authService.logout();
-                          Navigator.of(context).pop();
-                        },
-                        icon: const Icon(Icons.logout_rounded),
-                        label: const Text('Se déconnecter'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: JorappColors.tealDark,
-                          side: const BorderSide(color: JorappColors.teal),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+      endDrawer: JorappDrawer(
+        authService: widget.authService,
+        onNavigate: _pushNamedFromDrawer,
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -390,7 +172,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _categories.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, i) => CategoryCard(
                     title: _categories[i].title,
                     subtitle: _categories[i].subtitle,
