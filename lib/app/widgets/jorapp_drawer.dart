@@ -11,6 +11,7 @@ class JorappDrawer extends StatelessWidget {
   final bool showAudioGuide;
   final bool showPartenaires;
   final bool showOrientation;
+  final bool showStories;
 
   const JorappDrawer({
     super.key,
@@ -20,6 +21,7 @@ class JorappDrawer extends StatelessWidget {
     this.showAudioGuide = true,
     this.showPartenaires = true,
     this.showOrientation = true,
+    this.showStories = true,
   });
 
   String _displayName() {
@@ -105,7 +107,7 @@ class JorappDrawer extends StatelessWidget {
                 ),
               ),
               if (showMapEntry)
-                ListTile(
+                ExpansionTile(
                   leading: const Icon(
                     Icons.biotech_rounded,
                     color: JorappColors.tealDark,
@@ -115,7 +117,37 @@ class JorappDrawer extends StatelessWidget {
                     'Science participative',
                     style: TextStyle(color: JorappColors.ink, fontSize: 15),
                   ),
-                  onTap: () => onNavigate(AppRouter.map),
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.only(left: 56, right: 16),
+                      leading: const Icon(
+                        Icons.map_outlined,
+                        color: JorappColors.tealDark,
+                        size: 22,
+                      ),
+                      title: const Text(
+                        'Carte réseau',
+                        style: TextStyle(color: JorappColors.ink, fontSize: 14),
+                      ),
+                      onTap: () => onNavigate(AppRouter.map),
+                    ),
+                    if (showStories)
+                      ListTile(
+                        contentPadding: const EdgeInsets.only(left: 56, right: 16),
+                        leading: const Icon(
+                          Icons.mic_rounded,
+                          color: JorappColors.tealDark,
+                          size: 22,
+                        ),
+                        title: const Text(
+                          'Récits de terrain',
+                          style: TextStyle(color: JorappColors.ink, fontSize: 14),
+                        ),
+                        onTap: () => onNavigate(AppRouter.stories),
+                      ),
+                  ],
                 ),
               if (showAudioGuide)
                 ListTile(

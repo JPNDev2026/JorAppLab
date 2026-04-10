@@ -266,18 +266,21 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            Text(widget.balade.nom),
-            Text(
-              '${widget.points.length} point(s) audio',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF50616A),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/branding/jorapp_logo.png',
+                width: 30,
+                height: 30,
+                fit: BoxFit.cover,
               ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              widget.balade.nom,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
           ],
         ),

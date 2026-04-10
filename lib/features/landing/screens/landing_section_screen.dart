@@ -34,7 +34,7 @@ class LandingSectionScreen extends StatelessWidget {
         title: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
                 width: 30,

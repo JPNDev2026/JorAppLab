@@ -10,6 +10,11 @@ import '../features/geofencing/geofencing_controller.dart';
 import '../features/geofencing/screens/network_map_screen.dart';
 import '../features/landing/screens/landing_screen.dart';
 import '../features/map/presentation/map_screen.dart';
+import '../features/stories_mapping/screens/recording_screen.dart';
+import '../features/stories_mapping/screens/recordings_list_screen.dart';
+import '../features/stories_mapping/services/recording_service.dart';
+import '../features/stories_mapping/services/stories_local_datasource.dart';
+import '../features/stories_mapping/services/sync_service.dart';
 import '../features/welcome/screens/welcome_screen.dart';
 import 'screens/web_unsupported_screen.dart';
 
@@ -24,11 +29,16 @@ class AppRouter {
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
+  static const String stories = '/stories/record';
+  static const String storiesList = '/stories/list';
 
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings, {
     required AuthService authService,
     required GeofencingController geofencingController,
+    required StoriesLocalDatasource storiesDatasource,
+    required RecordingService recordingService,
+    required SyncService syncService,
   }) {
     switch (settings.name) {
       case welcome:
@@ -142,6 +152,43 @@ class AppRouter {
           settings: settings,
           builder: (_) => ForgotPasswordScreen(authService: authService),
         );
+      case stories:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
+        if (!authService.isLoggedIn) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LoginScreen(
+              authService: authService,
+              redirectRoute: AppRouter.stories,
+            ),
+          );
+        }
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => RecordingScreen(
+            recordingService: recordingService,
+            syncService: syncService,
+          ),
+        );
+      case storiesList:
+        if (kIsWeb) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => RecordingsListScreen(
+            datasource: storiesDatasource,
+            syncService: syncService,
+          ),
+        );
       default:
         if (kIsWeb) {
           return MaterialPageRoute<void>(
@@ -174,7 +221,26 @@ class _PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/branding/jorapp_logo.png',
+                width: 30,
+                height: 30,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

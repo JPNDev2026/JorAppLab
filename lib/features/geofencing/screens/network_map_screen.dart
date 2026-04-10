@@ -224,32 +224,21 @@ class _NetworkMapScreenState extends State<NetworkMapScreen>
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 76,
         title: Row(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
-                width: 36,
-                height: 36,
+                width: 30,
+                height: 30,
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 14),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'JorAppLab',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  'Parc du Jorat',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ],
+            const SizedBox(width: 10),
+            const Text(
+              'Carte réseau',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
           ],
         ),

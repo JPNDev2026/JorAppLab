@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import '../features/auth/auth_service.dart';
 import '../features/geofencing/geofencing_controller.dart';
 import '../features/geofencing/services/tracking_controller.dart';
+import '../features/stories_mapping/services/recording_service.dart';
+import '../features/stories_mapping/services/stories_local_datasource.dart';
+import '../features/stories_mapping/services/sync_service.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -20,6 +23,12 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   final TrackingController _trackingController = TrackingController();
   late final GeofencingController _geofencingController =
       GeofencingController(trackingController: _trackingController);
+
+  final StoriesLocalDatasource _storiesDatasource = StoriesLocalDatasource();
+  late final RecordingService _recordingService =
+      RecordingService(datasource: _storiesDatasource);
+  late final SyncService _syncService =
+      SyncService(datasource: _storiesDatasource);
 
   @override
   void initState() {
@@ -43,6 +52,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     _authService.dispose();
     _geofencingController.dispose();
     _trackingController.dispose();
+    _recordingService.dispose();
+    _syncService.dispose();
     super.dispose();
   }
 
@@ -57,6 +68,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         settings,
         authService: _authService,
         geofencingController: _geofencingController,
+        storiesDatasource: _storiesDatasource,
+        recordingService: _recordingService,
+        syncService: _syncService,
       ),
     );
   }
