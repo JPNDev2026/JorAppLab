@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../core/services/location_service.dart';
 import '../models/location_sample.dart';
 import '../models/network_measurement.dart';
 
@@ -165,10 +166,8 @@ class LocationCollectionService {
       Position? selected = _bestAccuracyPosition(_windowPositions);
       selected ??= _latestPosition;
 
-      selected ??= await Geolocator.getCurrentPosition(
-        locationSettings: _currentLocationSettings(),
-        timeLimit: const Duration(seconds: 15),
-      );
+      selected ??= await LocationService.instance.getCurrentPosition();
+      if (selected == null) throw Exception('Position GPS non disponible');
 
       final measuredAt = DateTime.now().toUtc();
       final networkSnapshotFuture = _readNetworkSnapshot();
@@ -270,39 +269,6 @@ class LocationCollectionService {
           accuracy: LocationAccuracy.best,
           distanceFilter: 0,
         );
-    }
-  }
-
-  LocationSettings _currentLocationSettings() {
-    if (kIsWeb) {
-      return const LocationSettings(accuracy: LocationAccuracy.best);
-    }
-
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        return AndroidSettings(
-          accuracy: _useNetworkAssisted
-              ? LocationAccuracy.high
-              : LocationAccuracy.bestForNavigation,
-          distanceFilter: 0,
-          forceLocationManager: !_useNetworkAssisted,
-          foregroundNotificationConfig: const ForegroundNotificationConfig(
-            notificationTitle: 'Collecte GPS active',
-            notificationText: 'Mesures en cours en arriere-plan',
-            enableWakeLock: true,
-          ),
-        );
-      case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
-        return AppleSettings(
-          accuracy: LocationAccuracy.best,
-          distanceFilter: 0,
-          pauseLocationUpdatesAutomatically: false,
-        );
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-      case TargetPlatform.fuchsia:
-        return const LocationSettings(accuracy: LocationAccuracy.best);
     }
   }
 
@@ -679,29 +645,20 @@ class LocationCollectionService {
       return false;
     }
 
-    var permission = await Geolocator.checkPermission();
-
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    final hasPermission = await LocationService.instance.requestPermission();
+    if (!hasPermission) {
       _errorController.add('Permission de localisation refusee.');
       return false;
     }
 
-    if (!kIsWeb &&
-        defaultTargetPlatform == TargetPlatform.android &&
-        permission == LocationPermission.whileInUse) {
-      final upgradedPermission = await Geolocator.requestPermission();
-      if (upgradedPermission != LocationPermission.denied &&
-          upgradedPermission != LocationPermission.deniedForever) {
-        permission = upgradedPermission;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.whileInUse) {
+        await Geolocator.requestPermission();
+        _errorController.add(
+          'Permission en arriere-plan recommandee: Android > App > Autorisations > Localisation > Toujours autoriser.',
+        );
       }
-      _errorController.add(
-        'Permission en arriere-plan recommandee: Android > App > Autorisations > Localisation > Toujours autoriser.',
-      );
     }
 
     return true;

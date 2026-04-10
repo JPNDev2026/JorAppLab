@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/services/location_service.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../auth/auth_service.dart';
 import '../geofencing_controller.dart';
@@ -52,7 +53,7 @@ class _NetworkMapScreenState extends State<NetworkMapScreen>
     _errorSubscription = widget.geofencingController.errors.listen((error) {
       _handleError(error);
     });
-    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((
+    _serviceStatusSubscription = LocationService.instance.getServiceStatusStream().listen((
       status,
     ) {
       if (!mounted) return;
@@ -101,10 +102,8 @@ class _NetworkMapScreenState extends State<NetworkMapScreen>
   }
 
   Future<void> _requestLocationPermissionIfNeeded() async {
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+    await LocationService.instance.requestPermission();
+    final permission = await Geolocator.checkPermission();
     if (!mounted) return;
     setState(() {
       _locationPermission = permission;
@@ -148,14 +147,14 @@ class _NetworkMapScreenState extends State<NetworkMapScreen>
   Future<void> _handleLocationBannerPressed() async {
     if (!_hasLocationPermission) {
       if (_locationPermission == LocationPermission.deniedForever) {
-        await Geolocator.openAppSettings();
+        await LocationService.instance.openSettings();
       } else {
         await _requestLocationPermissionIfNeeded();
       }
       return;
     }
 
-    await Geolocator.openLocationSettings();
+    await LocationService.instance.openLocationSettings();
   }
 
   Future<void> _openMeasurements() async {

@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/services/location_service.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../../geofencing/geofencing_controller.dart';
 import '../../geofencing/models/location_sample.dart';
@@ -63,7 +64,7 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
     _errorSubscription = widget.geofencingController.errors.listen((error) {
       _handleError(error);
     });
-    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((
+    _serviceStatusSubscription = LocationService.instance.getServiceStatusStream().listen((
       status,
     ) {
       if (!mounted) return;
@@ -132,10 +133,8 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
   }
 
   Future<void> _requestLocationPermissionIfNeeded() async {
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+    await LocationService.instance.requestPermission();
+    final permission = await Geolocator.checkPermission();
     if (!mounted) return;
     setState(() {
       _locationPermission = permission;
@@ -179,14 +178,14 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
   Future<void> _handleLocationBannerPressed() async {
     if (!_hasLocationPermission) {
       if (_locationPermission == LocationPermission.deniedForever) {
-        await Geolocator.openAppSettings();
+        await LocationService.instance.openSettings();
       } else {
         await _requestLocationPermissionIfNeeded();
       }
       return;
     }
 
-    await Geolocator.openLocationSettings();
+    await LocationService.instance.openLocationSettings();
   }
 
   void _scheduleRecenterAfterSheetAnimation() {
@@ -419,7 +418,7 @@ class _OrientationMapScreenState extends State<OrientationMapScreen>
                                 points: polygon,
                                 borderColor: JorappColors.tealDark,
                                 borderStrokeWidth: 2,
-                                color: JorappColors.lime.withOpacity(0.30),
+                                color: JorappColors.lime.withValues(alpha: 0.30),
                                 isFilled: true,
                               ),
                             )
@@ -528,7 +527,7 @@ class _GpsBadge extends StatelessWidget {
         animation: animation,
         builder: (context, _) {
           final dotColor = isActive
-              ? JorappColors.lime.withOpacity(0.45 + (animation.value * 0.55))
+              ? JorappColors.lime.withValues(alpha: 0.45 + (animation.value * 0.55))
               : Colors.grey.shade400;
           return Row(
             mainAxisSize: MainAxisSize.min,
@@ -576,15 +575,15 @@ class _LocationSettingsBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: JorappColors.tealDark.withOpacity(0.14),
+          color: JorappColors.tealDark.withValues(alpha: 0.14),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: JorappColors.ink.withOpacity(0.08),
+            color: JorappColors.ink.withValues(alpha: 0.08),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -705,7 +704,7 @@ class _BottomSheet extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: JorappColors.tealDark.withOpacity(0.10),
+                color: JorappColors.tealDark.withValues(alpha: 0.10),
                 blurRadius: 18,
                 offset: const Offset(0, -4),
               ),
@@ -725,7 +724,7 @@ class _BottomSheet extends StatelessWidget {
                       width: 36,
                       height: 3,
                       decoration: BoxDecoration(
-                        color: JorappColors.teal.withOpacity(0.22),
+                        color: JorappColors.teal.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -803,15 +802,15 @@ class _BottomSheet extends StatelessWidget {
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: JorappColors.lime.withOpacity(0.10),
+                      color: JorappColors.lime.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: JorappColors.teal.withOpacity(0.28),
+                        color: JorappColors.teal.withValues(alpha: 0.28),
                         width: 0.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: JorappColors.tealDark.withOpacity(0.05),
+                          color: JorappColors.tealDark.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -850,7 +849,7 @@ class _BottomSheet extends StatelessWidget {
                                 'Activer l\'alerte lorsque je suis dans la zone protégée',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: JorappColors.tealDark.withOpacity(0.72),
+                                  color: JorappColors.tealDark.withValues(alpha: 0.72),
                                 ),
                               ),
                             ],
@@ -861,10 +860,10 @@ class _BottomSheet extends StatelessWidget {
                           child: Switch(
                             value: isZoneAlertEnabled,
                             onChanged: onGeofenceToggle,
-                            activeColor: JorappColors.tealDark,
-                            activeTrackColor: JorappColors.lime.withOpacity(0.7),
+                            activeThumbColor: JorappColors.tealDark,
+                            activeTrackColor: JorappColors.lime.withValues(alpha: 0.7),
                             inactiveThumbColor: JorappColors.tealDark
-                                .withOpacity(0.35),
+                                .withValues(alpha: 0.35),
                             inactiveTrackColor: JorappColors.surfaceStrong,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,

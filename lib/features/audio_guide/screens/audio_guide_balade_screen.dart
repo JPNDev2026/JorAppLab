@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
+import '../../../core/services/location_service.dart';
 
 import '../../../theme/jorapp_theme.dart';
 import '../../geofencing/geofencing_controller.dart';
@@ -124,7 +125,7 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
             action: SnackBarAction(
               label: 'Activer le GPS',
               onPressed: () async {
-                await Geolocator.openLocationSettings();
+                await LocationService.instance.openLocationSettings();
               },
             ),
           ),
@@ -298,11 +299,12 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
                   borderRadius: BorderRadius.circular(24),
                   child: FlutterMap(
                     options: MapOptions(
-                      center: _initialCenter(),
-                      zoom: 15,
-                      rotation: 0,
-                      interactiveFlags:
-                          InteractiveFlag.all & ~InteractiveFlag.rotate,
+                      initialCenter: _initialCenter(),
+                      initialZoom: 15,
+                      initialRotation: 0,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                      ),
                     ),
                     children: [
                       TileLayer(
@@ -317,7 +319,7 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
                                 points: _buildRadiusPolygon(point),
                                 borderColor: JorappColors.tealDark,
                                 borderStrokeWidth: 2,
-                                color: JorappColors.lime.withOpacity(0.22),
+                                color: JorappColors.lime.withValues(alpha: 0.22),
                                 isFilled: true,
                               ),
                             )
@@ -377,7 +379,7 @@ class _AudioGuideBaladeScreenState extends State<AudioGuideBaladeScreen>
                               height: 34,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: JorappColors.lime.withOpacity(0.35),
+                                  color: JorappColors.lime.withValues(alpha: 0.35),
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: JorappColors.lime,
@@ -461,7 +463,7 @@ class _AudioGuideStatusCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        border: Border.all(color: JorappColors.lime.withOpacity(0.65)),
+        border: Border.all(color: JorappColors.lime.withValues(alpha: 0.65)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -501,7 +503,7 @@ class _AudioGuideStatusCard extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: isPlaying ? onPause : null,
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.16),
+                    backgroundColor: Colors.white.withValues(alpha: 0.16),
                     foregroundColor: Colors.white,
                   ),
                   icon: const Icon(Icons.pause_rounded),
@@ -511,7 +513,7 @@ class _AudioGuideStatusCard extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: onStop,
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.16),
+                    backgroundColor: Colors.white.withValues(alpha: 0.16),
                     foregroundColor: Colors.white,
                   ),
                   icon: const Icon(Icons.stop_rounded),
