@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../theme/jorapp_theme.dart';
 import '../models/field_recording.dart';
+import '../services/recording_player_service.dart';
 import '../services/stories_local_datasource.dart';
 import '../services/sync_service.dart';
 import '../widgets/recording_tile.dart';
@@ -26,6 +27,13 @@ class RecordingsListScreen extends StatefulWidget {
 
 class _RecordingsListScreenState extends State<RecordingsListScreen> {
   _ViewMode _viewMode = _ViewMode.list;
+  final RecordingPlayerService _playerService = RecordingPlayerService();
+
+  @override
+  void dispose() {
+    _playerService.dispose();
+    super.dispose();
+  }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
@@ -186,6 +194,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
                     final r = sorted[index];
                     return RecordingTile(
                       recording: r,
+                      playerService: _playerService,
                       onUpload: () => _uploadOne(r),
                       onDeleteLocal: () => _deleteLocal(r),
                       onDeleteEverywhere: r.remoteId != null
@@ -278,6 +287,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: RecordingTile(
           recording: r,
+          playerService: _playerService,
           onUpload: () async {
             Navigator.pop(sheetContext);
             await _uploadOne(r);

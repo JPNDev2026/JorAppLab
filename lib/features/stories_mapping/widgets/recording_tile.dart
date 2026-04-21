@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/jorapp_theme.dart';
 import '../models/field_recording.dart';
+import '../services/recording_player_service.dart';
 import 'status_badge.dart';
 
 enum _MenuAction { upload, deleteLocal, deleteEverywhere }
 
 class RecordingTile extends StatelessWidget {
   final FieldRecording recording;
+  final RecordingPlayerService playerService;
   final Future<void> Function() onUpload;
   final Future<void> Function() onDeleteLocal;
   final Future<void> Function()? onDeleteEverywhere;
@@ -15,6 +17,7 @@ class RecordingTile extends StatelessWidget {
   const RecordingTile({
     super.key,
     required this.recording,
+    required this.playerService,
     required this.onUpload,
     required this.onDeleteLocal,
     this.onDeleteEverywhere,
@@ -49,6 +52,20 @@ class RecordingTile extends StatelessWidget {
     final lonDir = lon >= 0 ? 'E' : 'O';
     return '${lat.abs().toStringAsFixed(4)}°$latDir, '
         '${lon.abs().toStringAsFixed(4)}°$lonDir';
+  }
+
+  // ── Lecture ───────────────────────────────────────────────────────────────────
+
+  void _togglePlay() {
+    if (playerService.isActive(recording.id)) {
+      if (playerService.isPlaying) {
+        playerService.pause();
+      } else {
+        playerService.resume();
+      }
+    } else {
+      playerService.play(recording);
+    }
   }
 
   // ── Actions menu ──────────────────────────────────────────────────────────────
@@ -163,18 +180,73 @@ class RecordingTile extends StatelessWidget {
             color: JorappColors.ink,
           ),
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(
-            '${_formatDuration(recording.durationSeconds)}  ·  '
-            '${_formatCoords(recording.latitude, recording.longitude)}',
-            style: TextStyle(
-              fontSize: 11,
-              color: JorappColors.ink.withValues(alpha: 0.55),
-            ),
-          ),
+        subtitle: ListenableBuilder(
+          listenable: playerService,
+          builder: (context, _) {
+            final isActive = playerService.isActive(recording.id);
+            final total = playerService.totalDuration;
+            final progressValue = isActive && total != null && total.inMilliseconds > 0
+                ? (playerService.position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
+                : null;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '${_formatDuration(recording.durationSeconds)}  ·  '
+                    '${_formatCoords(recording.latitude, recording.longitude)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: JorappColors.ink.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ),
+                if (isActive) ...[
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progressValue,
+                      minHeight: 3,
+                      backgroundColor: JorappColors.surfaceStrong,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        JorappColors.teal,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
-        trailing: PopupMenuButton<_MenuAction>(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListenableBuilder(
+              listenable: playerService,
+              builder: (context, _) {
+                final isActive = playerService.isActive(recording.id);
+                final isPlaying = isActive && playerService.isPlaying;
+                return IconButton(
+                  onPressed: _togglePlay,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: Icon(
+                    isPlaying
+                        ? Icons.pause_circle_rounded
+                        : Icons.play_circle_rounded,
+                    color: isActive
+                        ? JorappColors.teal
+                        : JorappColors.ink.withValues(alpha: 0.45),
+                    size: 26,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 4),
+            PopupMenuButton<_MenuAction>(
           icon: Icon(
             Icons.more_vert,
             color: JorappColors.ink.withValues(alpha: 0.45),
@@ -224,6 +296,8 @@ class RecordingTile extends StatelessWidget {
                   dense: true,
                 ),
               ),
+          ],
+        ),
           ],
         ),
       ),

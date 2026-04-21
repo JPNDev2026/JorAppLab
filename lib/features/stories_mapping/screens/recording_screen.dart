@@ -189,56 +189,84 @@ class _RecordingScreenState extends State<RecordingScreen>
   // ── État idle ─────────────────────────────────────────────────────────────────
 
   Widget _buildIdleState({required bool loading}) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Appuyez pour démarrer un enregistrement',
-            style: TextStyle(
-              fontSize: 14,
-              color: JorappColors.ink.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 36),
-          GestureDetector(
-            onTap: loading ? null : _startRecording,
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: loading
-                    ? JorappColors.teal.withValues(alpha: 0.5)
-                    : JorappColors.teal,
-                boxShadow: [
-                  BoxShadow(
-                    color: JorappColors.teal.withValues(alpha: 0.35),
-                    blurRadius: 24,
-                    spreadRadius: 4,
-                  ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(height: 80),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: const Column(
+            children: [
+              Text(
+                'Il existe une autre géographie du Jorat, invisible, sensible. Aidez-nous à la cartographier avec vos mots.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  height: 1.55,
+                  color: JorappColors.teal,
+                ),
               ),
-              child: loading
-                  ? const Center(
-                      child: SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      ),
-                    )
-                  : const Icon(
-                      Icons.mic_rounded,
-                      color: Colors.white,
-                      size: 44,
-                    ),
-            ),
+              SizedBox(height: 12),
+              Text(
+                'Enregistrez, réécoutez, recommencez. Vous décidez de ce que vous partagez.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.55,
+                  color: JorappColors.teal,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const Spacer(),
+        Text(
+          'Appuyez pour démarrer un enregistrement',
+          style: TextStyle(
+            fontSize: 14,
+            color: JorappColors.ink.withValues(alpha: 0.6),
+          ),
+        ),
+        const SizedBox(height: 36),
+        GestureDetector(
+          onTap: loading ? null : _startRecording,
+          child: Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: loading
+                  ? JorappColors.teal.withValues(alpha: 0.5)
+                  : JorappColors.teal,
+              boxShadow: [
+                BoxShadow(
+                  color: JorappColors.teal.withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: loading
+                ? const Center(
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  )
+                : const Icon(
+                    Icons.mic_rounded,
+                    color: Colors.white,
+                    size: 44,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 80),
+      ],
     );
   }
 
