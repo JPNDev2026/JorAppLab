@@ -224,20 +224,25 @@ class RecordingService extends ChangeNotifier {
   }
 
   Future<void> _ensureMicPermission() async {
-    var status = await Permission.microphone.status;
-    if (status.isGranted) return;
+    final status = await Permission.microphone.status;
+    developer.log('[RecordingService] mic permission status: $status');
 
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
+    if (status.isGranted) {
+      // granted → on peut démarrer
+      return;
+    }
+
+    if (status.isDenied) {
+      // undetermined (iOS: notDetermined) → on affiche le prompt natif
+      final result = await Permission.microphone.request();
+      developer.log('[RecordingService] mic permission après request(): $result');
+      if (result.isGranted) return;
       throw const RecordingException(RecordingError.micPermissionDenied);
     }
 
-    status = await Permission.microphone.request();
-    if (status.isGranted) return;
-
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
-    }
+    // permanentlyDenied (iOS: denied) → l'utilisateur doit aller dans Réglages
+    developer.log('[RecordingService] mic permission permanentement refusée → openAppSettings');
+    await openAppSettings();
     throw const RecordingException(RecordingError.micPermissionDenied);
   }
 
