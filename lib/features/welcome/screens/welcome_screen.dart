@@ -23,17 +23,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   ];
   static const List<_WelcomeSlide> _slides = <_WelcomeSlide>[
     _WelcomeSlide(
-      title: 'Découvrir la région',
+      title: 'Bienvenue',
       subtitle: 'Restauration, artisans du goût, offres culturelles, séjours',
     ),
     _WelcomeSlide(
-      title: 'Explorer le parc',
-      subtitle: 'Itinéraires, activités, lieux d’accueil, balades contées',
+      title: 'Une géographie alternative',
+      subtitle: 'Les paysages du Jorat se lisent de multiples façons, à travers les sens et les émotions',
     ),
     _WelcomeSlide(
-      title: 'Observer et Soigner',
+      title: 'Aidez-nous',
       subtitle:
-          'Relevés faune et flore, cartographie collaborative, activités régénératrices',
+          'Cartographiez les lieux avec vos mots, enregistrez des ambiances',
     ),
   ];
 

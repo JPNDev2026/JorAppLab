@@ -5,11 +5,6 @@ import '../features/auth/auth_service.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/register_screen.dart';
-import '../features/audio_guide/screens/audio_guide_screen.dart';
-import '../features/geofencing/geofencing_controller.dart';
-import '../features/geofencing/screens/network_map_screen.dart';
-import '../features/landing/screens/landing_screen.dart';
-import '../features/map/presentation/map_screen.dart';
 import '../features/stories_mapping/screens/recording_screen.dart';
 import '../features/stories_mapping/screens/recordings_list_screen.dart';
 import '../features/stories_mapping/services/recording_service.dart';
@@ -20,12 +15,7 @@ import 'screens/web_unsupported_screen.dart';
 
 class AppRouter {
   static const String welcome = '/welcome';
-  static const String home = '/';
-  static const String map = '/map';
   static const String landing = '/landing';
-  static const String audioGuide = '/audio-guide';
-  static const String partenaires = '/partenaires';
-  static const String orientation = '/orientation';
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
@@ -35,7 +25,6 @@ class AppRouter {
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings, {
     required AuthService authService,
-    required GeofencingController geofencingController,
     required StoriesLocalDatasource storiesDatasource,
     required RecordingService recordingService,
     required SyncService syncService,
@@ -45,10 +34,7 @@ class AppRouter {
         if (kIsWeb) {
           return MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) => LandingScreen(
-              authService: authService,
-              geofencingController: geofencingController,
-            ),
+            builder: (_) => const WebUnsupportedScreen(),
           );
         }
         return MaterialPageRoute<void>(
@@ -56,60 +42,6 @@ class AppRouter {
           builder: (_) => const WelcomeScreen(),
         );
       case landing:
-        return MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) => LandingScreen(
-            authService: authService,
-            geofencingController: geofencingController,
-          ),
-        );
-      case map:
-      case home:
-        if (kIsWeb) {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const WebUnsupportedScreen(),
-          );
-        }
-        return MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) => NetworkMapScreen(
-            authService: authService,
-            geofencingController: geofencingController,
-          ),
-        );
-      case partenaires:
-        if (kIsWeb) {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => LandingScreen(
-              authService: authService,
-              geofencingController: geofencingController,
-            ),
-          );
-        }
-        return MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) => const _PlaceholderScreen(
-            title: "Découvertes",
-            icon: Icons.explore_rounded,
-            message: "Cet écran sera branché dans l’étape suivante.",
-          ),
-        );
-      case orientation:
-        if (kIsWeb) {
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const WebUnsupportedScreen(),
-          );
-        }
-        return MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) => OrientationMapScreen(
-            geofencingController: geofencingController,
-          ),
-        );
-      case audioGuide:
         if (kIsWeb) {
           return MaterialPageRoute<void>(
             settings: settings,
@@ -121,14 +53,16 @@ class AppRouter {
             settings: settings,
             builder: (_) => LoginScreen(
               authService: authService,
-              redirectRoute: AppRouter.audioGuide,
+              redirectRoute: AppRouter.stories,
             ),
           );
         }
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => AudioGuideScreen(
-            geofencingController: geofencingController,
+          builder: (_) => RecordingScreen(
+            authService: authService,
+            recordingService: recordingService,
+            syncService: syncService,
           ),
         );
       case login:
@@ -136,7 +70,7 @@ class AppRouter {
           settings: settings,
           builder: (_) => LoginScreen(
             authService: authService,
-            redirectRoute: settings.arguments as String?,
+            redirectRoute: (settings.arguments as String?) ?? AppRouter.stories,
           ),
         );
       case register:
@@ -171,6 +105,7 @@ class AppRouter {
         return MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => RecordingScreen(
+            authService: authService,
             recordingService: recordingService,
             syncService: syncService,
           ),
@@ -180,6 +115,15 @@ class AppRouter {
           return MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => const WebUnsupportedScreen(),
+          );
+        }
+        if (!authService.isLoggedIn) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LoginScreen(
+              authService: authService,
+              redirectRoute: AppRouter.storiesList,
+            ),
           );
         }
         return MaterialPageRoute<void>(
@@ -196,68 +140,23 @@ class AppRouter {
             builder: (_) => const WebUnsupportedScreen(),
           );
         }
+        if (!authService.isLoggedIn) {
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => LoginScreen(
+              authService: authService,
+              redirectRoute: AppRouter.stories,
+            ),
+          );
+        }
         return MaterialPageRoute<void>(
           settings: settings,
-          builder: (_) => NetworkMapScreen(
+          builder: (_) => RecordingScreen(
             authService: authService,
-            geofencingController: geofencingController,
+            recordingService: recordingService,
+            syncService: syncService,
           ),
         );
     }
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String message;
-
-  const _PlaceholderScreen({
-    required this.title,
-    required this.icon,
-    required this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                'assets/branding/jorapp_logo.png',
-                width: 30,
-                height: 30,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 44, color: const Color(0xFF15495F)),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

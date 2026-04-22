@@ -53,6 +53,34 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> updateName(String name) async {
+    final id = currentUser!.id;
+    await pb.collection('users').update(id, body: {'name': name.trim()});
+    await pb.collection('users').authRefresh();
+    notifyListeners();
+  }
+
+  Future<void> updateEmail(String email) async {
+    final id = currentUser!.id;
+    await pb.collection('users').update(id, body: {
+      'email': email.trim(),
+      'emailVisibility': true,
+    });
+    await pb.collection('users').authRefresh();
+    notifyListeners();
+  }
+
+  Future<void> updatePassword(String oldPassword, String newPassword) async {
+    final id = currentUser!.id;
+    final email = currentUser!.getStringValue('email');
+    await pb.collection('users').update(id, body: {
+      'password': newPassword,
+      'passwordConfirm': newPassword,
+      'oldPassword': oldPassword,
+    });
+    await login(email, newPassword);
+  }
+
   void logout() {
     pb.authStore.clear();
     notifyListeners();

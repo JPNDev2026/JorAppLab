@@ -7,21 +7,11 @@ import '../router.dart';
 class JorappDrawer extends StatelessWidget {
   final AuthService authService;
   final Future<void> Function(String routeName, {Object? arguments}) onNavigate;
-  final bool showMapEntry;
-  final bool showAudioGuide;
-  final bool showPartenaires;
-  final bool showOrientation;
-  final bool showStories;
 
   const JorappDrawer({
     super.key,
     required this.authService,
     required this.onNavigate,
-    this.showMapEntry = true,
-    this.showAudioGuide = true,
-    this.showPartenaires = true,
-    this.showOrientation = true,
-    this.showStories = true,
   });
 
   String _displayName() {
@@ -106,88 +96,18 @@ class JorappDrawer extends StatelessWidget {
                   ],
                 ),
               ),
-              if (showMapEntry)
-                ExpansionTile(
-                  leading: const Icon(
-                    Icons.biotech_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Science participative',
-                    style: TextStyle(color: JorappColors.ink, fontSize: 15),
-                  ),
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                  childrenPadding: EdgeInsets.zero,
-                  children: [
-                    ListTile(
-                      contentPadding: const EdgeInsets.only(left: 56, right: 16),
-                      leading: const Icon(
-                        Icons.map_outlined,
-                        color: JorappColors.tealDark,
-                        size: 22,
-                      ),
-                      title: const Text(
-                        'Carte réseau',
-                        style: TextStyle(color: JorappColors.ink, fontSize: 14),
-                      ),
-                      onTap: () => onNavigate(AppRouter.map),
-                    ),
-                    if (showStories)
-                      ListTile(
-                        contentPadding: const EdgeInsets.only(left: 56, right: 16),
-                        leading: const Icon(
-                          Icons.mic_rounded,
-                          color: JorappColors.tealDark,
-                          size: 22,
-                        ),
-                        title: const Text(
-                          'Récits de terrain',
-                          style: TextStyle(color: JorappColors.ink, fontSize: 14),
-                        ),
-                        onTap: () => onNavigate(AppRouter.stories),
-                      ),
-                  ],
+              ListTile(
+                leading: const Icon(
+                  Icons.mic_rounded,
+                  color: JorappColors.tealDark,
+                  size: 28,
                 ),
-              if (showAudioGuide)
-                ListTile(
-                  leading: const Icon(
-                    Icons.headset_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Balade audio',
-                    style: TextStyle(color: JorappColors.ink, fontSize: 15),
-                  ),
-                  onTap: () => onNavigate(AppRouter.audioGuide),
+                title: const Text(
+                  'Récits de terrain',
+                  style: TextStyle(color: JorappColors.ink, fontSize: 15),
                 ),
-              if (showPartenaires)
-                ListTile(
-                  leading: const Icon(
-                    Icons.explore_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Découvertes',
-                    style: TextStyle(color: JorappColors.ink, fontSize: 15),
-                  ),
-                  onTap: () => onNavigate(AppRouter.partenaires),
-                ),
-              if (showOrientation)
-                ListTile(
-                  leading: const Icon(
-                    Icons.signpost_rounded,
-                    color: JorappColors.tealDark,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    'Orientation',
-                    style: TextStyle(color: JorappColors.ink, fontSize: 15),
-                  ),
-                  onTap: () => onNavigate(AppRouter.orientation),
-                ),
+                onTap: () => onNavigate(AppRouter.stories),
+              ),
               const Spacer(),
               const Divider(height: 1),
               if (!isLoggedIn)

@@ -127,8 +127,8 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
-                width: 30,
-                height: 30,
+                width: 45,
+                height: 45,
                 fit: BoxFit.cover,
               ),
             ),
@@ -144,7 +144,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
             style: IconButton.styleFrom(
               backgroundColor: JorappColors.surfaceStrong,
               foregroundColor: JorappColors.tealDark,
-              minimumSize: const Size(44, 44),
+              minimumSize: const Size(50, 50),
             ),
             icon: Icon(
               _viewMode == _ViewMode.list
@@ -159,7 +159,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
                   _viewMode == _ViewMode.list ? _ViewMode.map : _ViewMode.list,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
         ],
       ),
       body: ValueListenableBuilder<List<FieldRecording>>(
@@ -380,7 +380,7 @@ class _SyncHeader extends StatelessWidget {
                         return Text(
                           'Récits terrain',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 16,
                             color: JorappColors.ink.withValues(alpha: 0.55),
                           ),
                         );
@@ -412,8 +412,8 @@ class _SyncHeader extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.sync_rounded, size: 16),
                 label: const Text(
-                  'Synchroniser tout',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  'Tout synchroniser',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               );
             },
@@ -447,7 +447,7 @@ class _EmptyState extends StatelessWidget {
               'Aucun récit enregistré pour l\'instant',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: JorappColors.tealDark,
               ),
@@ -457,7 +457,7 @@ class _EmptyState extends StatelessWidget {
               'Démarrez un enregistrement terrain pour le voir apparaître ici.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 18,
                 color: JorappColors.ink.withValues(alpha: 0.55),
                 height: 1.5,
               ),

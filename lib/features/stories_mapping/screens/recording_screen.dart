@@ -4,16 +4,20 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
+import '../../../features/auth/auth_service.dart';
+import '../../../features/auth/screens/account_screen.dart';
 import '../../../theme/jorapp_theme.dart';
 import '../services/recording_service.dart';
 import '../services/sync_service.dart';
 
 class RecordingScreen extends StatefulWidget {
+  final AuthService authService;
   final RecordingService recordingService;
   final SyncService syncService;
 
   const RecordingScreen({
     super.key,
+    required this.authService,
     required this.recordingService,
     required this.syncService,
   });
@@ -133,20 +137,21 @@ class _RecordingScreenState extends State<RecordingScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/branding/jorapp_logo.png',
-                width: 30,
-                height: 30,
+                width: 45,
+                height: 45,
                 fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 10),
             const Text(
-              'Enregistrement terrain',
+              'Enregistrement',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
           ],
@@ -156,13 +161,30 @@ class _RecordingScreenState extends State<RecordingScreen>
             style: IconButton.styleFrom(
               backgroundColor: JorappColors.surfaceStrong,
               foregroundColor: JorappColors.tealDark,
-              minimumSize: const Size(44, 44),
+              minimumSize: const Size(50, 50),
+            ),
+            icon: const Icon(Icons.person_rounded, size: 28),
+            tooltip: 'Mon compte',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    AccountScreen(authService: widget.authService),
+              ),
+            ),
+          ),
+          const SizedBox(width: 25),
+          IconButton.filledTonal(
+            style: IconButton.styleFrom(
+              backgroundColor: JorappColors.surfaceStrong,
+              foregroundColor: JorappColors.tealDark,
+              minimumSize: const Size(50, 50),
             ),
             icon: const Icon(Icons.library_music_outlined, size: 30),
             tooltip: 'Mes récits',
             onPressed: () => Navigator.pushNamed(context, AppRouter.storiesList),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 32),
         ],
       ),
       body: _buildBody(),
@@ -224,7 +246,7 @@ class _RecordingScreenState extends State<RecordingScreen>
         Text(
           'Appuyez pour démarrer un enregistrement',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 18,
             color: JorappColors.ink.withValues(alpha: 0.6),
           ),
         ),
@@ -232,8 +254,8 @@ class _RecordingScreenState extends State<RecordingScreen>
         GestureDetector(
           onTap: loading ? null : _startRecording,
           child: Container(
-            width: 96,
-            height: 96,
+            width: 112,
+            height: 112,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: loading

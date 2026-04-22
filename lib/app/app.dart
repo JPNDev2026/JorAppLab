@@ -63,11 +63,11 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       title: 'JORAPP',
       theme: buildAppTheme(),
-      initialRoute: AppRouter.welcome,
+      initialRoute:
+          _authService.isLoggedIn ? AppRouter.stories : AppRouter.welcome,
       onGenerateRoute: (settings) => AppRouter.onGenerateRoute(
         settings,
         authService: _authService,
-        geofencingController: _geofencingController,
         storiesDatasource: _storiesDatasource,
         recordingService: _recordingService,
         syncService: _syncService,

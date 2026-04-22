@@ -67,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
-        widget.redirectRoute ?? AppRouter.landing,
+        widget.redirectRoute ?? AppRouter.stories,
       );
     } on ClientException catch (e) {
       if (!mounted) return;
