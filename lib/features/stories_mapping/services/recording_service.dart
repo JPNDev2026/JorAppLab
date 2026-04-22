@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -24,6 +25,7 @@ class AuthException implements Exception {
 enum RecordingError {
   micPermissionDenied,
   locationPermissionDenied,
+  locationServiceDisabled,
   locationUnavailable,
   storageError;
 
@@ -33,6 +35,8 @@ enum RecordingError {
       'Permission microphone refusée. Autorisez l\'accès dans les réglages.',
     RecordingError.locationPermissionDenied =>
       'Permission localisation refusée. Autorisez l\'accès dans les réglages.',
+    RecordingError.locationServiceDisabled =>
+      'Les services de localisation sont désactivés. Activez-les dans Réglages → Confidentialité et sécurité → Service de localisation.',
     RecordingError.locationUnavailable =>
       'Position GPS indisponible. Activez le GPS et réessayez.',
     RecordingError.storageError =>
@@ -254,20 +258,32 @@ class RecordingService extends ChangeNotifier {
   }
 
   Future<void> _ensureLocationPermission() async {
-    var status = await Permission.location.status;
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    print('📍 [LOC] isLocationServiceEnabled: $serviceEnabled');
+    if (!serviceEnabled) {
+      throw const RecordingException(RecordingError.locationServiceDisabled);
+    }
+
+    final status = await Permission.locationWhenInUse.status;
+    print('📍 [LOC] status BEFORE request: $status '
+        '| isGranted=${status.isGranted} '
+        '| isDenied=${status.isDenied} '
+        '| isPermanentlyDenied=${status.isPermanentlyDenied} '
+        '| isRestricted=${status.isRestricted}');
+
     if (status.isGranted) return;
 
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
+    if (status.isDenied) {
+      final result = await Permission.locationWhenInUse.request();
+      print('📍 [LOC] status AFTER request: $result '
+          '| isGranted=${result.isGranted} '
+          '| isPermanentlyDenied=${result.isPermanentlyDenied}');
+      if (result.isGranted) return;
       throw const RecordingException(RecordingError.locationPermissionDenied);
     }
 
-    status = await Permission.location.request();
-    if (status.isGranted) return;
-
-    if (status.isPermanentlyDenied) {
-      await openAppSettings();
-    }
+    print('📍 [LOC] → permanentlyDenied → openAppSettings()');
+    await openAppSettings();
     throw const RecordingException(RecordingError.locationPermissionDenied);
   }
 
