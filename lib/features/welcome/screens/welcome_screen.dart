@@ -24,7 +24,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   static const List<_WelcomeSlide> _slides = <_WelcomeSlide>[
     _WelcomeSlide(
       title: 'Bienvenue',
-      subtitle: 'Restauration, artisans du goût, offres culturelles, séjours',
+      subtitle: 'JorApp est une application participative, merci pour votre contribution',
     ),
     _WelcomeSlide(
       title: 'Une géographie alternative',
