@@ -224,17 +224,39 @@ class RecordingService extends ChangeNotifier {
   }
 
   Future<void> _ensureMicPermission() async {
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
+    var status = await Permission.microphone.status;
+    if (status.isGranted) return;
+
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
       throw const RecordingException(RecordingError.micPermissionDenied);
     }
+
+    status = await Permission.microphone.request();
+    if (status.isGranted) return;
+
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+    throw const RecordingException(RecordingError.micPermissionDenied);
   }
 
   Future<void> _ensureLocationPermission() async {
-    final status = await Permission.location.request();
-    if (!status.isGranted) {
+    var status = await Permission.location.status;
+    if (status.isGranted) return;
+
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
       throw const RecordingException(RecordingError.locationPermissionDenied);
     }
+
+    status = await Permission.location.request();
+    if (status.isGranted) return;
+
+    if (status.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+    throw const RecordingException(RecordingError.locationPermissionDenied);
   }
 
   Future<String> _buildFilePath(String uuid) async {
