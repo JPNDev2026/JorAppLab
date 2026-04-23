@@ -30,6 +30,8 @@
 	<string>Le microphone est utilisé pour enregistrer vos récits de terrain dans le parc du Jorat.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Votre position est nécessaire pour suivre le parcours dans le parc du Jorat.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Votre position est utilisée pour localiser vos enregistrements dans le parc du Jorat.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
