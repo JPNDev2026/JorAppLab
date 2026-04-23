@@ -4,9 +4,12 @@ class JorappColors {
   static const Color lime = Color(0xFFD7E337);
   static const Color teal = Color(0xFF1F6481);
   static const Color tealDark = Color(0xFF15495F);
+  static const Color tealLight = Color(0xFF2A7FA0);
   static const Color ink = Color(0xFF142228);
   static const Color surface = Color(0xFFF5F8F0);
   static const Color surfaceStrong = Color(0xFFE8F0DF);
+  static const Color muted = Color(0xFF7A9AAA);
+  static const Color danger = Color(0xFFC0392B);
 }
 
 ThemeData buildJorappTheme() {
