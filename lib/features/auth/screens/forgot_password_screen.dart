@@ -261,7 +261,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           style: TextButton.styleFrom(foregroundColor: JorappColors.muted),
           child: const Text(
             '← Retour à la connexion',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400),
           ),
         ),
       ],

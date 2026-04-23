@@ -115,60 +115,78 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
     return LatLng(latSum / recordings.length, lngSum / recordings.length);
   }
 
+  String _formatTotalDuration(int totalSeconds) {
+    if (totalSeconds < 60) return '${totalSeconds}s';
+    final m = totalSeconds ~/ 60;
+    final s = totalSeconds.remainder(60);
+    return s == 0 ? '${m}m' : '${m}m${s}s';
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: JorappColors.surface,
       appBar: AppBar(
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                'assets/branding/jorapp_logo.png',
-                width: 45,
-                height: 45,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Mes récits',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-          ],
+        title: const Text(
+          'Mes récits',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: JorappColors.ink,
+          ),
         ),
         actions: [
-          IconButton.filledTonal(
-            style: IconButton.styleFrom(
-              backgroundColor: JorappColors.surfaceStrong,
-              foregroundColor: JorappColors.tealDark,
-              minimumSize: const Size(50, 50),
-            ),
-            icon: Icon(
-              _viewMode == _ViewMode.list
-                  ? Icons.map_outlined
-                  : Icons.list_rounded,
-              size: 30,
-            ),
-            tooltip:
-                _viewMode == _ViewMode.list ? 'Vue carte' : 'Vue liste',
-            onPressed: () => setState(
+          GestureDetector(
+            onTap: () => setState(
               () => _viewMode =
                   _viewMode == _ViewMode.list ? _ViewMode.map : _ViewMode.list,
             ),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: JorappColors.teal.withValues(alpha: 0.09),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                _viewMode == _ViewMode.list
+                    ? Icons.map_outlined
+                    : Icons.list_rounded,
+                color: JorappColors.teal,
+                size: 24,
+              ),
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 20),
         ],
       ),
-      body: ValueListenableBuilder<List<FieldRecording>>(
-        valueListenable: widget.datasource.recordingsNotifier,
-        builder: (context, recordings, _) {
-          return _viewMode == _ViewMode.list
-              ? _buildListView(recordings)
-              : _buildMapView(recordings);
-        },
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.6),
+                  radius: 1.2,
+                  colors: [
+                    JorappColors.teal.withValues(alpha: 0.07),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          ValueListenableBuilder<List<FieldRecording>>(
+            valueListenable: widget.datasource.recordingsNotifier,
+            builder: (context, recordings, _) {
+              return _viewMode == _ViewMode.list
+                  ? _buildListView(recordings)
+                  : _buildMapView(recordings);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -176,8 +194,52 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
   // ── Vue liste ─────────────────────────────────────────────────────────────────
 
   Widget _buildListView(List<FieldRecording> recordings) {
+    final totalCount = recordings.length;
+    final syncedCount =
+        recordings.where((r) => r.syncStatus == SyncStatus.synced).length;
+    final totalDuration = recordings.fold<int>(
+      0,
+      (sum, r) => sum + r.durationSeconds,
+    );
+
     return Column(
       children: [
+        // Stats strip
+        if (totalCount > 0)
+          Container(
+            margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: JorappColors.teal.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                _StatItem(
+                  value: '$totalCount',
+                  label: 'RÉCITS',
+                ),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: JorappColors.teal.withValues(alpha: 0.1),
+                ),
+                _StatItem(
+                  value: '$syncedCount',
+                  label: 'SYNCHRONISÉS',
+                ),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: JorappColors.teal.withValues(alpha: 0.1),
+                ),
+                _StatItem(
+                  value: _formatTotalDuration(totalDuration),
+                  label: 'DURÉE',
+                ),
+              ],
+            ),
+          ),
         _SyncHeader(
           syncService: widget.syncService,
           onSyncAll: _syncAll,
@@ -186,7 +248,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
           child: recordings.isEmpty
               ? const _EmptyState()
               : ListView.builder(
-                  padding: const EdgeInsets.only(top: 8, bottom: 24),
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                   itemCount: recordings.length,
                   itemBuilder: (context, index) {
                     final sorted = [...recordings]
@@ -229,8 +291,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
           ),
           children: [
             TileLayer(
-              urlTemplate:
-                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'ch.jorat.geofence',
             ),
             MarkerLayer(
@@ -257,7 +318,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
                       child: const Icon(
                         Icons.mic_rounded,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
                     ),
                   ),
@@ -308,6 +369,44 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
   }
 }
 
+// ── Stats item ────────────────────────────────────────────────────────────────
+
+class _StatItem extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _StatItem({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: JorappColors.teal,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 1,
+              color: JorappColors.muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Header sync ───────────────────────────────────────────────────────────────
 
 class _SyncHeader extends StatelessWidget {
@@ -318,28 +417,20 @@ class _SyncHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: JorappColors.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: JorappColors.surfaceStrong,
-            width: 0.5,
-          ),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
         children: [
           ValueListenableBuilder<bool>(
             valueListenable: syncService.isSyncing,
             builder: (context, syncing, _) {
-              return Row(
-                children: [
-                  if (syncing) ...[
+              if (syncing) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     const SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: 12,
+                      height: 12,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: JorappColors.teal,
@@ -349,45 +440,50 @@ class _SyncHeader extends StatelessWidget {
                     const Text(
                       'Synchronisation…',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 2,
                         color: JorappColors.teal,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ] else ...[
-                    ValueListenableBuilder<String?>(
-                      valueListenable: syncService.lastSyncError,
-                      builder: (context, err, _) {
-                        if (err != null) {
-                          return Row(
-                            children: [
-                              const Icon(
-                                Icons.warning_amber_rounded,
-                                size: 14,
-                                color: Color(0xFFE65100),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Dernière sync échouée',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: JorappColors.ink.withValues(alpha: 0.55),
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                        return Text(
-                          'Récits terrain',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: JorappColors.ink.withValues(alpha: 0.55),
-                          ),
-                        );
-                      },
-                    ),
                   ],
-                ],
+                );
+              }
+              return ValueListenableBuilder<String?>(
+                valueListenable: syncService.lastSyncError,
+                builder: (context, err, _) {
+                  if (err != null) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 12,
+                          color: Color(0xFFE65100),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Dernière sync échouée',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 2,
+                            color: Color(0xFFE65100),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return const Text(
+                    'RÉCITS TERRAIN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                      color: JorappColors.muted,
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -395,25 +491,49 @@ class _SyncHeader extends StatelessWidget {
           ValueListenableBuilder<bool>(
             valueListenable: syncService.isSyncing,
             builder: (context, syncing, _) {
-              return FilledButton.icon(
-                onPressed: syncing ? null : onSyncAll,
-                style: FilledButton.styleFrom(
-                  backgroundColor: JorappColors.teal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: syncing
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: JorappColors.teal.withValues(alpha: 0.25),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
-                icon: const Icon(Icons.sync_rounded, size: 16),
-                label: const Text(
-                  'Tout synchroniser',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                child: TextButton.icon(
+                  onPressed: syncing ? null : onSyncAll,
+                  style: TextButton.styleFrom(
+                    backgroundColor: syncing
+                        ? JorappColors.teal.withValues(alpha: 0.5)
+                        : JorappColors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.sync_rounded,
+                    size: 13,
+                    color: JorappColors.lime,
+                  ),
+                  label: const Text(
+                    'Tout synchroniser',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               );
             },
@@ -439,7 +559,7 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(
               Icons.mic_none_rounded,
-              size: 56,
+              size: 48,
               color: JorappColors.teal.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
@@ -447,7 +567,7 @@ class _EmptyState extends StatelessWidget {
               'Aucun récit enregistré pour l\'instant',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: JorappColors.tealDark,
               ),
@@ -457,7 +577,7 @@ class _EmptyState extends StatelessWidget {
               'Démarrez un enregistrement terrain pour le voir apparaître ici.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 13,
                 color: JorappColors.ink.withValues(alpha: 0.55),
                 height: 1.5,
               ),

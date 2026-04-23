@@ -268,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text(
                                 'Créer un compte',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -288,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: const Text(
                                 'Mot de passe oublié',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
