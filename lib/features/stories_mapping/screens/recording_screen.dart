@@ -102,7 +102,9 @@ class _RecordingScreenState extends State<RecordingScreen>
           _showSuccessSnackbar('Enregistrement synchronisé.');
         }
       } else {
-        _showSuccessSnackbar('Enregistrement sauvegardé. Sync en attente de réseau.');
+        _showSuccessSnackbar(
+          'Enregistrement sauvegardé. Sync en attente de réseau.',
+        );
       }
     } on RecordingException catch (e) {
       if (!mounted) return;
@@ -115,19 +117,13 @@ class _RecordingScreenState extends State<RecordingScreen>
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: JorappColors.tealDark,
-      ),
+      SnackBar(content: Text(message), backgroundColor: JorappColors.tealDark),
     );
   }
 
   void _showSuccessSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: JorappColors.teal,
-      ),
+      SnackBar(content: Text(message), backgroundColor: JorappColors.teal),
     );
   }
 
@@ -136,6 +132,7 @@ class _RecordingScreenState extends State<RecordingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: JorappColors.surface,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Row(
@@ -152,42 +149,83 @@ class _RecordingScreenState extends State<RecordingScreen>
             const SizedBox(width: 10),
             const Text(
               'Enregistrement',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: JorappColors.ink,
+              ),
             ),
           ],
         ),
         actions: [
-          IconButton.filledTonal(
-            style: IconButton.styleFrom(
-              backgroundColor: JorappColors.surfaceStrong,
-              foregroundColor: JorappColors.tealDark,
-              minimumSize: const Size(50, 50),
-            ),
-            icon: const Icon(Icons.person_rounded, size: 28),
-            tooltip: 'Mon compte',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    AccountScreen(authService: widget.authService),
+          Tooltip(
+            message: 'Mon compte',
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      AccountScreen(authService: widget.authService),
+                ),
+              ),
+              child: Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: JorappColors.teal.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: JorappColors.teal,
+                  size: 22,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 25),
-          IconButton.filledTonal(
-            style: IconButton.styleFrom(
-              backgroundColor: JorappColors.surfaceStrong,
-              foregroundColor: JorappColors.tealDark,
-              minimumSize: const Size(50, 50),
+          const SizedBox(width: 18),
+          Tooltip(
+            message: 'Mes récits',
+            child: GestureDetector(
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRouter.storiesList),
+              child: Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: JorappColors.teal.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.library_music_outlined,
+                  color: JorappColors.teal,
+                  size: 24,
+                ),
+              ),
             ),
-            icon: const Icon(Icons.library_music_outlined, size: 30),
-            tooltip: 'Mes récits',
-            onPressed: () => Navigator.pushNamed(context, AppRouter.storiesList),
           ),
-          const SizedBox(width: 32),
+          const SizedBox(width: 16),
         ],
       ),
-      body: _buildBody(),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.6),
+                  radius: 1.2,
+                  colors: [
+                    JorappColors.teal.withValues(alpha: 0.07),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _buildBody(),
+        ],
+      ),
     );
   }
 
@@ -200,7 +238,9 @@ class _RecordingScreenState extends State<RecordingScreen>
         final state = widget.recordingService.state;
         return switch (state) {
           RecordingState.idle || RecordingState.requestingPermission =>
-            _buildIdleState(loading: state == RecordingState.requestingPermission),
+            _buildIdleState(
+              loading: state == RecordingState.requestingPermission,
+            ),
           RecordingState.recording => _buildRecordingState(),
           RecordingState.stopping => _buildStoppingState(),
         };
@@ -214,48 +254,164 @@ class _RecordingScreenState extends State<RecordingScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 80),
+        const SizedBox(height: 48),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: const Column(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Il existe une autre géographie du Jorat, invisible, sensible. Aidez-nous à la cartographier avec vos mots.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  height: 1.55,
-                  color: JorappColors.teal,
+              // Tag pill
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 4,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: JorappColors.lime,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: JorappColors.ink.withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'SCIENCE PARTICIPATIVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: JorappColors.ink,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 12),
-              Text(
-                'Enregistrez, réécoutez, recommencez. Vous décidez de ce que vous partagez.',
-                textAlign: TextAlign.center,
+              const Text(
+                'Il existe une autre géographie du Jorat, invisible et sensible.',
                 style: TextStyle(
-                  fontSize: 16,
-                  height: 1.55,
-                  color: JorappColors.teal,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                  color: JorappColors.tealDark,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Aidez-nous à la cartographier avec vos mots.',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                  color: JorappColors.muted,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Card explicative
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: JorappColors.ink.withValues(alpha: 0.07),
+                      blurRadius: 16,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Stack(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: JorappColors.teal.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.mic_none_rounded,
+                            color: JorappColors.teal,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Vous décidez',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: JorappColors.ink,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'Enregistrez, réécoutez, recommencez. Vous décidez de ce que vous partagez.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.5,
+                                  color: JorappColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Accent lime gauche
+                    Positioned(
+                      left: -16,
+                      top: -16,
+                      bottom: -16,
+                      child: Container(
+                        width: 3,
+                        decoration: const BoxDecoration(
+                          color: JorappColors.lime,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            bottomLeft: Radius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
         const Spacer(),
-        Text(
+        const Text(
           'Appuyez pour démarrer un enregistrement',
           style: TextStyle(
-            fontSize: 18,
-            color: JorappColors.ink.withValues(alpha: 0.6),
+            fontSize: 16,
+            color: JorappColors.muted,
+            letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 36),
+        const SizedBox(height: 28),
         GestureDetector(
           onTap: loading ? null : _startRecording,
           child: Container(
-            width: 112,
-            height: 112,
+            width: 95,
+            height: 95,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: loading
@@ -265,15 +421,15 @@ class _RecordingScreenState extends State<RecordingScreen>
                 BoxShadow(
                   color: JorappColors.teal.withValues(alpha: 0.35),
                   blurRadius: 24,
-                  spreadRadius: 4,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: loading
                 ? const Center(
                     child: SizedBox(
-                      width: 32,
-                      height: 32,
+                      width: 28,
+                      height: 28,
                       child: CircularProgressIndicator(
                         color: Colors.white,
                         strokeWidth: 3,
@@ -283,7 +439,7 @@ class _RecordingScreenState extends State<RecordingScreen>
                 : const Icon(
                     Icons.mic_rounded,
                     color: Colors.white,
-                    size: 44,
+                    size: 28,
                   ),
           ),
         ),
@@ -346,7 +502,9 @@ class _RecordingScreenState extends State<RecordingScreen>
               value: progress.clamp(0.0, 1.0),
               minHeight: 6,
               backgroundColor: JorappColors.surfaceStrong,
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFE53935),
+              ),
             ),
           ),
           const SizedBox(height: 6),
