@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text(
                         'JORAPP',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 16,
                           fontWeight: FontWeight.w500,
                           letterSpacing: 3,
                           color: JorappColors.muted,
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             const Text(
                               'Connexion',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.w700,
                                 color: JorappColors.tealDark,
                               ),
@@ -247,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ? 'Connexion...'
                                       : 'Se connecter',
                                   style: const TextStyle(
-                                    fontSize: 14,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
