@@ -28,12 +28,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isSubmitting = false;
   bool _termsAccepted = false;
 
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmFocus = FocusNode();
+  bool _nameFocused = false;
+  bool _emailFocused = false;
+  bool _passwordFocused = false;
+  bool _confirmFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameFocus.addListener(
+      () => setState(() => _nameFocused = _nameFocus.hasFocus),
+    );
+    _emailFocus.addListener(
+      () => setState(() => _emailFocused = _emailFocus.hasFocus),
+    );
+    _passwordFocus.addListener(
+      () => setState(() => _passwordFocused = _passwordFocus.hasFocus),
+    );
+    _confirmFocus.addListener(
+      () => setState(() => _confirmFocused = _confirmFocus.hasFocus),
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
     super.dispose();
   }
 
@@ -42,9 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Le champ Nom est obligatoire.'),
-        ),
+        const SnackBar(content: Text('Le champ Nom est obligatoire.')),
       );
       return;
     }
@@ -84,106 +112,252 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool canSubmit = _termsAccepted && !_isSubmitting;
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF8FAF5), Color(0xFFEAF2E3)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      backgroundColor: JorappColors.surface,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.6),
+                  radius: 1.2,
+                  colors: [
+                    JorappColors.teal.withValues(alpha: 0.07),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/branding/jorapp_logo.png',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 20),
-                  Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Creer un compte',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: JorappColors.tealDark,
+                      const SizedBox(height: 32),
+                      // Logo zone compact — pas de label "JORAPP"
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Image.asset(
+                          'assets/branding/jorapp_logo.png',
+                          width: 46,
+                          height: 53,
+                          fit: BoxFit.contain,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Nom'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Mot de passe',
+                      // Form card
+                      Container(
+                        margin: const EdgeInsets.only(
+                          top: 14,
+                          left: 16,
+                          right: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: JorappColors.ink.withValues(alpha: 0.09),
+                              blurRadius: 24,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Créer un compte',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: JorappColors.tealDark,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _fieldLabel('NOM'),
+                            const SizedBox(height: 6),
+                            _styledField(
+                              controller: _nameController,
+                              focusNode: _nameFocus,
+                              focused: _nameFocused,
+                            ),
+                            const SizedBox(height: 16),
+                            _fieldLabel('EMAIL'),
+                            const SizedBox(height: 6),
+                            _styledField(
+                              controller: _emailController,
+                              focusNode: _emailFocus,
+                              focused: _emailFocused,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 16),
+                            _fieldLabel('MOT DE PASSE'),
+                            const SizedBox(height: 6),
+                            _styledField(
+                              controller: _passwordController,
+                              focusNode: _passwordFocus,
+                              focused: _passwordFocused,
+                              obscureText: true,
+                            ),
+                            const SizedBox(height: 16),
+                            _fieldLabel('CONFIRMATION'),
+                            const SizedBox(height: 6),
+                            _styledField(
+                              controller: _confirmPasswordController,
+                              focusNode: _confirmFocus,
+                              focused: _confirmFocused,
+                              obscureText: true,
+                              onSubmitted: (_) => _submit(),
+                            ),
+                            const SizedBox(height: 12),
+                            // Checkbox CGU
+                            _TermsCheckbox(
+                              accepted: _termsAccepted,
+                              onChanged: (v) =>
+                                  setState(() => _termsAccepted = v ?? false),
+                              onReadTerms: () => _showTermsSheet(context),
+                            ),
+                            // Bouton
+                            Container(
+                              height: 46,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: canSubmit
+                                    ? [
+                                        BoxShadow(
+                                          color: JorappColors.teal.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: ElevatedButton(
+                                onPressed:
+                                    (_isSubmitting || !_termsAccepted)
+                                        ? null
+                                        : _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: JorappColors.teal,
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor:
+                                      JorappColors.teal.withValues(alpha: 0.2),
+                                  disabledForegroundColor: JorappColors.muted,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text(
+                                  _isSubmitting
+                                      ? 'Création en cours...'
+                                      : 'Créer mon compte',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _isSubmitting
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              style: TextButton.styleFrom(
+                                foregroundColor: JorappColors.teal,
+                              ),
+                              child: const Text(
+                                'Déjà un compte',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Confirmation mot de passe',
-                        ),
-                        onSubmitted: (_) => _submit(),
-                      ),
-                      const SizedBox(height: 20),
-                      _TermsCheckbox(
-                        accepted: _termsAccepted,
-                        onChanged: (v) =>
-                            setState(() => _termsAccepted = v ?? false),
-                        onReadTerms: () => _showTermsSheet(context),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed:
-                            (_isSubmitting || !_termsAccepted) ? null : _submit,
-                        child: Text(
-                          _isSubmitting
-                              ? 'Creation en cours...'
-                              : 'Creer mon compte',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-                        child: const Text('Deja un compte'),
-                      ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
-                ],
-              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.5,
+        color: JorappColors.muted,
+      ),
+    );
+  }
+
+  Widget _styledField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required bool focused,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      height: 42,
+      decoration: BoxDecoration(
+        color: focused ? Colors.white : JorappColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: focused
+              ? JorappColors.teal
+              : JorappColors.teal.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        boxShadow: focused
+            ? [
+                BoxShadow(
+                  color: JorappColors.teal.withValues(alpha: 0.08),
+                  blurRadius: 0,
+                  spreadRadius: 3,
+                ),
+              ]
+            : [],
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(fontSize: 14, color: JorappColors.ink),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          isDense: true,
         ),
       ),
     );
@@ -247,60 +421,73 @@ class _TermsCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Checkbox(
-            value: accepted,
-            onChanged: onChanged,
-            activeColor: JorappColors.teal,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => onChanged(!accepted),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: accepted ? JorappColors.teal : JorappColors.surface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: accepted
+                      ? JorappColors.teal
+                      : JorappColors.teal.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: accepted
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "J'accepte les conditions d'utilisation",
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: JorappColors.tealDark,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "En soumettant des enregistrements, je cède mes droits d'usage à l'association Jorat Parc Naturel pour des fins scientifiques, artistiques et promotionnelles, dans le respect de mon anonymat.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: JorappColors.ink,
-                  height: 1.45,
-                ),
-              ),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: onReadTerms,
-                child: const Text(
-                  'Lire les conditions complètes →',
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "J'accepte les conditions d'utilisation",
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: JorappColors.teal,
-                    decoration: TextDecoration.underline,
-                    decorationColor: JorappColors.teal,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                const Text(
+                  "En soumettant des enregistrements, je cède mes droits d'usage à l'association Jorat Parc Naturel pour des fins scientifiques, artistiques et promotionnelles, dans le respect de mon anonymat.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: JorappColors.muted,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: onReadTerms,
+                  child: const Text(
+                    'Lire les conditions complètes →',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: JorappColors.tealLight,
+                      decoration: TextDecoration.underline,
+                      decorationColor: JorappColors.tealLight,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -345,7 +532,7 @@ class _TermsSheet extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                'JorApp / Festi\'Jorat 2026 — Version 1.0, Mai 2025',
+                "JorApp / Festi'Jorat 2026 — Version 1.0, Mai 2025",
                 style: TextStyle(fontSize: 12, color: JorappColors.teal),
               ),
             ),
