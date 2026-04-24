@@ -27,11 +27,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Le microphone est utilisé pour enregistrer vos récits de terrain dans le parc du Jorat.</string>
+	<string>Le microphone est utilisé pour vous permettre d'enregistrer vos récits de terrain dans le parc du Jorat.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Votre position est nécessaire pour suivre le parcours dans le parc du Jorat.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Votre position est utilisée pour localiser vos enregistrements dans le parc du Jorat.</string>
+	<string>Votre position est utilisée pour localiser vos enregistrements dans le parc du Jorat. L'utilisation de ces données est clairement et explicitement déclarée dans les conditions générales d'utilisation</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
