@@ -17,6 +17,7 @@ import '../features/stories_mapping/services/stories_local_datasource.dart';
 import '../features/stories_mapping/services/sync_service.dart';
 import '../features/welcome/screens/welcome_screen.dart';
 import 'screens/web_unsupported_screen.dart';
+import '../features/festijorat/screens/festijorat_screen.dart';
 
 class AppRouter {
   static const String welcome = '/welcome';
@@ -45,10 +46,7 @@ class AppRouter {
         if (kIsWeb) {
           return MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) => LandingScreen(
-              authService: authService,
-              geofencingController: geofencingController,
-            ),
+            builder: (_) => const FestijoratScreen(),
           );
         }
         return MaterialPageRoute<void>(
@@ -193,7 +191,7 @@ class AppRouter {
         if (kIsWeb) {
           return MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) => const WebUnsupportedScreen(),
+            builder: (_) => const FestijoratScreen(),
           );
         }
         return MaterialPageRoute<void>(

@@ -15,6 +15,7 @@ Les widgets et services partagés sont dans `lib/app/` et `lib/core/`.
 - **Web** : landing page, réservation, contenu éditorial — pas de GPS, pas d'audio natif
 - `main.dart` détecte `kIsWeb` pour éviter `PbClient.init()` (flutter_secure_storage non supporté sur web)
 - Le router (`lib/app/router.dart`) gère les divergences web/native avec `kIsWeb`
+- Sur web, l'écran d'entrée (route `/welcome` et `default`) est désormais `FestijoratScreen` (`features/festijorat/`) — page d'inscription au festival Festi'Jorat 2026 avec liens Weezevent trackés.
 
 ### Widgets partagés (lib/app/widgets/)
 - `JorappAppBar` — AppBar standard avec logo et bouton menu burger
@@ -31,6 +32,7 @@ Les widgets et services partagés sont dans `lib/app/` et `lib/core/`.
 | Geofencing / GPS tracking | `features/geofencing/` | Native | ✅ Actif |
 | Carte réseau (mesures) | `features/geofencing/screens/network_map_screen.dart` | Native | ✅ Actif |
 | Carte orientation visiteur | `features/map/` | Native | ✅ Actif |
+| Festi'Jorat landing | `features/festijorat/` | Web | ✅ Actif |
 
 ### Collections PocketBase
 - `users` — authentification
