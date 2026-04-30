@@ -97,34 +97,12 @@ class FestijoratScreen extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: JorappColors.lime,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "FESTI'JORAT",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: JorappColors.ink,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '6 juin 2026 · Les paysages entrent en scène',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: JorappColors.ink.withValues(alpha: 0.75),
-                          ),
-                        ),
-                      ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'assets/branding/banner.jpg',
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
