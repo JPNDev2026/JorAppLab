@@ -70,7 +70,7 @@ class FestijoratScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Parc du Jorat',
+                  'Parc Naturel du Jorat',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -237,7 +237,7 @@ class FestijoratScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'Inscriptions via Weezevent · Parc naturel périurbain du Jorat',
+                      'Inscriptions via Weezevent · Association Jorat Parc Naturel',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
