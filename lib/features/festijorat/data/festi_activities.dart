@@ -18,6 +18,14 @@ const festiActivities = <FestiActivity>[
     subtitle: 'Balade immersive guidée dans le parc',
     weezeventUrl: 'https://my.weezevent.com/festijorat-2026',
     icon: Icons.hiking_rounded,
-    accentColor: Color(0xFF476C32),
+    accentColor: JorappColors.teal,
+  ),
+   FestiActivity(
+    id: 'claquette',
+    title: 'Claquette',
+    subtitle: 'Spectacle de claquette avec le Théâtre de Vidy',
+    weezeventUrl: 'https://my.weezevent.com/festijorat-2026-claquettes',
+    icon: Icons.theater_comedy_rounded,
+    accentColor: JorappColors.teal,
   ),
 ];

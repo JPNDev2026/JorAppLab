@@ -43,6 +43,7 @@ class FestijoratScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Row(
@@ -82,68 +83,80 @@ class FestijoratScreen extends StatelessWidget {
           ],
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF8FAF5), Color(0xFFEAF2E3)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      'assets/branding/banner.jpg',
-                      width: double.infinity,
-                      fit: BoxFit.cover,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/branding/banner.jpg',
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Choisissez votre activité',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: JorappColors.ink,
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      child: Text(
+                        'Choisissez votre activité',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: JorappColors.ink,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: festiActivities.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) {
-                      final activity = festiActivities[i];
-                      return SizedBox(
-                        height: 96,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Text(
+                        'Les inscriptions sont gratuites et ouvertes à toutes et tous. '
+                        'Réserver votre place à l\'avance nous aide à vous '
+                        'offrir la meilleure expérience possible lors du festival.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: JorappColors.ink.withValues(alpha: 0.65),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: festiActivities.length,
+                        separatorBuilder: (_, _) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, i) {
+                          final activity = festiActivities[i];
+                          return Container(
+                            height: 96,
                             decoration: BoxDecoration(
                               color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: JorappColors.surfaceStrong,
-                                width: 1,
+                                color: const Color(0xFFEAF2E3),
+                                width: 2,
                               ),
                             ),
                             child: Material(
                               color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
                               child: InkWell(
-                                onTap: () => _launchActivity(context, activity),
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () =>
+                                    _launchActivity(context, activity),
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 12),
+                                  padding:
+                                      const EdgeInsets.only(left: 12),
                                   child: Row(
                                     children: [
                                       Container(
@@ -191,9 +204,10 @@ class FestijoratScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Container(
-                                        margin:
-                                            const EdgeInsets.only(right: 16),
-                                        padding: const EdgeInsets.symmetric(
+                                        margin: const EdgeInsets.only(
+                                            right: 16),
+                                        padding:
+                                            const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 6,
                                         ),
@@ -227,29 +241,30 @@ class FestijoratScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      'Inscriptions via Weezevent · Association Jorat Parc Naturel',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: JorappColors.ink.withValues(alpha: 0.5),
+                          );
+                        },
                       ),
                     ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  'Inscriptions via Weezevent · Association Jorat Parc Naturel',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: JorappColors.ink.withValues(alpha: 0.5),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
